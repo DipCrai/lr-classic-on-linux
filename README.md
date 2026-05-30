@@ -1,65 +1,87 @@
 # Adobe Lightroom Classic on Linux
 
-Fixes for running **Adobe Lightroom Classic** on Linux with **Wine/Proton + Wayland**.
-
-## Status
+Fixes for running **Adobe Lightroom Classic** on Linux with **Wine/Proton**.
 
 | Feature | Wayland | X11 |
-|---------|---------|---------|
-| Main UI | ✅ Works | ❌ Unfixable flickering on Nvidia |
-| CEF Import Dialog | ⚠️ Partially works with hangs (with fix_createwindow) | ✅ Works |
-| Image Previews | ⚠️ Should work (with winewayland patch) | ✅ Works |
+|---------|---------|-----|
+| Main UI | ✅ Works | ❌ Unfixable flicker |
+| CEF Import Dialog | ✅ Works (with fix_createwindow) | ⚠️ Works |
+| Image Previews | ✅ Works (with winewayland patch) | ✅ Works |
 | Histogram | ❌ Broken (D2D1) | ❌ Broken (D2D1) |
 | Develop module | ⚠️ Mostly works | ⚠️ Mostly works |
-| Export | ✅ Works | ✅ Works |
-
-## Root Cause
-
-**The main bug**: `winewayland.drv` creates a `wl_subsurface` on the **same** `wl_surface` used by `VkSurfaceKHR`. Wayland forbids giving a surface multiple roles. The NVIDIA Wayland driver enforces this and refuses swapchain creation.
-
-**Detailed analysis**: see [docs/ROOT_CAUSE.md](docs/ROOT_CAUSE.md)
-
-## Fixes
-
-### 1. winewayland.drv patch (reorder subsurface creation)
-
-The subsurface must be created **before** `vkCreateWaylandSurfaceKHR`, not after. This avoids the role conflict:
-
-```diff
-+    set_client_surface(hwnd, client_surface);
-     surface = wayland_surface_create(display, client, hwnd, FALSE);
--    set_client_surface(hwnd, client_surface);
-```
-
-See [patches/](patches/) for binary patch and source patch.
-
-### 2. CEF Import Dialog (fix_createwindow.dll)
-
-CEF child windows need to be top-level (`WS_POPUP` instead of `WS_CHILD`) to render on Wayland. The [fix_createwindow.dll](patches/fix_createwindow.c) intercepts `CreateWindowExW` and converts CEF windows.
-
-### 3. DXVK Configuration
-
-```ini
-d3d11.maxFeatureLevel = 11_0
-dxgi.syncInterval = 0
-dxgi.deferSurfaceCreation = True
-```
-
-### 4. CEF Flags
-
-```
-CHROMIUM_FLAGS="--in-process-gpu"
-```
-
-**NO** `--disable-gpu` — CEF must use ANGLE/D3D11/DXVK/Vulkan.
 
 ## Quick Start
 
-See [GUIDE.md](GUIDE.md) for full setup instructions.
+```bash
+# Clone repo
+git clone https://github.com/DipCrai/lr-classic-on-linux.git
+cd lr-classic-on-linux
+
+# 1. Apply binary patch (required for Wayland)
+python3 scripts/apply_patch.py
+
+# 2. Set up prefix and install VC++ runtimes
+WINEPREFIX=$HOME/.lightroom_prefix/pfx winetricks -q vcrun2022
+
+# 3. Install CC stub DLLs (see GUIDE.md)
+cp /path/to/stubs/*.dll "$WINEPREFIX/drive_c/windows/system32/"
+
+# 4. Launch!
+./scripts/launch_lightroom.sh
+```
+
+See [GUIDE.md](GUIDE.md) for full setup instructions and configuration.
+
+## The Problem
+
+`winewayland.drv` creates a `wl_subsurface` on the **same** `wl_surface` used by `VkSurfaceKHR`. Wayland forbids giving a surface multiple roles. The NVIDIA Wayland driver enforces this and refuses swapchain creation → gray previews and hangs.
+
+**Fix**: A binary patch reorders operations so the subsurface is created **before** `vkCreateWaylandSurfaceKHR`, avoiding the role conflict.
+
+## Two Display Modes
+
+### Wayland (recommended)
+- Flicker-free rendering
+- Requires: binary patch + fix_createwindow.dll + dxvk.conf
+- Launch: `scripts/launch_lightroom.sh`
+
+### X11 (not recommended)
+- Unfixable flicker on NVIDIA 580.159.03 (driver bug)
+- No binary patch needed
+- Launch: `scripts/launch_lightroom_x11.sh`
+
+## Root Cause
+
+Detailed analysis in [docs/ROOT_CAUSE.md](docs/ROOT_CAUSE.md). Brief call chain:
+
+```
+D3D11CreateDeviceAndSwapChain(child HWND)
+ → DXVK → vkCreateWin32SurfaceKHR(hwnd)
+ → winewayland.drv → wayland_vulkan_surface_create(hwnd)
+   → wl_compositor_create_surface() → wl_surface
+   → vkCreateWaylandSurfaceKHR(wl_surface)    ← VkSurface role
+   → set_client_surface(hwnd, client)
+     → wl_subcompositor.get_subsurface(wl_surface)  ← wl_subsurface role (CONFLICT!)
+     → NVIDIA refuses swapchain → DXVK hangs
+```
+
+## What's in this repo
+
+| Directory | Contents |
+|-----------|----------|
+| `scripts/` | Launchers, patch tools, build scripts |
+| `patches/` | Source code for fix_createwindow.dll, LD_PRELOAD alternatives |
+| `docs/` | Root cause analysis |
+| `stubs/` | CC stub DLLs (from patchforCC project) |
 
 ## Known Issues
 
-See [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
+- **Histogram**: Broken (D2D1 rendering — patched stub is incomplete)
+- **Scrolling**: Minor ghosting on Wayland
+- **CEF folder select**: May hang when selecting import folders
+- **Fullscreen**: May misbehave with fix_createwindow
+
+See [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## AI Disclosure
 

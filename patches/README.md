@@ -64,6 +64,17 @@ wine64 reg add "HKLM\Software\Microsoft\Windows NT\CurrentVersion\Windows" /v "A
 wine64 reg add "HKLM\Software\Microsoft\Windows NT\CurrentVersion\Windows" /v "LoadAppInit_DLLs" /t REG_DWORD /d 1 /f
 ```
 
+### X11 vs Wayland variant
+
+**Wayland (recommended)**: Use `fix_createwindow.c` as-is. Keeps window frames (`WS_BORDER`, `WS_DLGFRAME`, `WS_THICKFRAME`), adds `WS_EX_APPWINDOW`. CEF windows render correctly on Wayland subsurfaces.
+
+**X11**: Strip frame styles for import dialog to render correctly. Add these lines after `dwStyle &= ~WS_CHILD`:
+```c
+dwStyle &= ~(WS_BORDER | WS_DLGFRAME | WS_THICKFRAME);
+dwExStyle &= ~(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_MDICHILD);
+```
+(Refer to `fix_createwindow_original.c` in the Lightroom directory for the full X11 version.)
+
 ## LD_PRELOAD libraries (for reference)
 
 - `libwl_got_patch.c` — GOT-patching via monitoring thread (avoids RTLD_LOCAL issue)

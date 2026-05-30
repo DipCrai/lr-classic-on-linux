@@ -1,41 +1,42 @@
 #!/bin/bash
-# Lightroom Classic on Linux — Wayland launcher
+# Lightroom Classic on Linux — X11 launcher
+# NOTE: X11 has UNFIXABLE flickering on NVIDIA 580.159.03 driver.
+# This is provided for reference only — use Wayland (launch_lightroom.sh) for a working setup.
 # Source: https://github.com/DipCrai/lr-classic-on-linux
 set -o pipefail
 
 # ========== CONFIGURATION ==========
-# Edit these to match your system
-LR_DIR="$(cd "$(dirname "$0")/.." && pwd)"         # Lightroom installation directory
+LR_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WINEPREFIX="${WINEPREFIX:-$HOME/.lightroom_prefix/pfx}"
 STEAM_COMPAT_DATA_PATH="${STEAM_COMPAT_DATA_PATH:-$HOME/.lightroom_prefix}"
 STEAM_COMPAT_CLIENT_INSTALL_PATH="${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$HOME/.steam/root}"
 PROTON_DIR="${PROTON_DIR:-$STEAM_COMPAT_CLIENT_INSTALL_PATH/compatibilitytools.d/Proton-GE Latest}"
 LR_EXE="${LR_EXE:-$LR_DIR/Lightroom.exe}"
 DXVK_CONF="${DXVK_CONF:-$LR_DIR/dxvk.conf}"
-MONITOR="${MONITOR:-HDMI-A-1}"                      # Your Wayland monitor name (check 'wayland-info | grep name')
 LOG_DIR="${LOG_DIR:-/tmp/proton_logs}"
-PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow.c}"
 
-# ========== DISPLAY BACKEND: Wayland ==========
-export PROTON_ENABLE_WAYLAND=1
-export PROTON_WAYLAND_MONITOR="$MONITOR"
+# ========== DISPLAY BACKEND: X11 ==========
+unset PROTON_ENABLE_WAYLAND
+unset PROTON_WAYLAND_MONITOR
+unset GBM_BACKEND
+export DISPLAY="${DISPLAY:-:0}"
 
-# NVIDIA GBM (required for Wayland + NVIDIA)
-export GBM_BACKEND=nvidia-drm
+# NVIDIA
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 
-# DXVK config
+# DXVK
 export DXVK_CONFIG_FILE="$DXVK_CONF"
 
-# CEF import dialog flags (must use GPU rendering, NOT --disable-gpu)
-export CHROMIUM_FLAGS="--in-process-gpu"
+# CEF flags (disable GPU compositing on X11 to reduce flicker)
+export CHROMIUM_FLAGS="--disable-gpu --in-process-gpu"
 export WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="$CHROMIUM_FLAGS"
 
-# DLL overrides (d2d1 stub required for startup, ML stub fixes a crash)
+# DLL overrides
 export WINEDLLOVERRIDES="d2d1=n,b;Microsoft.AI.MachineLearning=n,b"
 
 # ========== AppInit DLL: CEF child→popup conversion ==========
 HOOK_DLL="fix_createwindow.dll"
+PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow.c}"
 if command -v x86_64-w64-mingw32-gcc &>/dev/null && [ -f "$PATCH_SOURCE" ]; then
     x86_64-w64-mingw32-gcc -shared -O2 -s -o /tmp/fix_createwindow.dll "$PATCH_SOURCE" 2>/dev/null || true
 fi
@@ -58,14 +59,12 @@ WINEPREFIX="$WINEPREFIX" \
 DXVK_CONFIG_FILE="$DXVK_CONFIG_FILE" \
 PROTON_LOG="$PROTON_LOG" \
 PROTON_LOG_DIR="$PROTON_LOG_DIR" \
-PROTON_ENABLE_WAYLAND="$PROTON_ENABLE_WAYLAND" \
-PROTON_WAYLAND_MONITOR="$PROTON_WAYLAND_MONITOR" \
-GBM_BACKEND="$GBM_BACKEND" \
 __GLX_VENDOR_LIBRARY_NAME="$__GLX_VENDOR_LIBRARY_NAME" \
+DISPLAY="$DISPLAY" \
 CHROMIUM_FLAGS="$CHROMIUM_FLAGS" \
 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="$WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" \
 WINEDLLOVERRIDES="$WINEDLLOVERRIDES" \
-"$PROTON_DIR/proton" run "$LR_EXE" 2>&1 | tee "$LOG_DIR/lr_wayland.log"
+"$PROTON_DIR/proton" run "$LR_EXE" 2>&1 | tee "$LOG_DIR/lr_x11.log"
 
 echo "Exit: $?"
 
