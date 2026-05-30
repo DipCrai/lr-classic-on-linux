@@ -1,4 +1,4 @@
-#(WIP) Adobe Lightroom Classic on Linux
+# (WIP) Adobe Lightroom Classic on Linux
 
 Fixes for running **Adobe Lightroom Classic** on Linux with **Wine/Proton**.
 
