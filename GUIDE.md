@@ -175,13 +175,15 @@ LR_DIR=/path/to/lightroom WINEPREFIX=~/.custom_prefix/pfx MONITOR=DP-1 ./scripts
 | `MONITOR` | `HDMI-A-1` | Wayland monitor name |
 | `DXVK_CONF` | `<LR_DIR>/dxvk.conf` | DXVK config path |
 
-#### X11 (NOT recommended — unfixable flicker on NVIDIA 580+)
+#### X11 (use for import dialog & previews)
 
 ```bash
 ./scripts/launch_lightroom_x11.sh
 ```
 
-X11 has persistent screen-tearing on NVIDIA driver 580.159.03 because the driver bypasses both Vulkan and GLX present modes. This is a **driver bug** with no known fix. Use Wayland instead.
+X11 handles import dialog and image previews correctly (unlike Wayland). The Develop module live preview may flicker on NVIDIA driver 580.159.03 — a driver bug with no known fix. The `X_CopyArea` crash under XWayland is rare; restart usually resolves it.
+
+For an ideal setup, use **Wayland** for Develop module work and **X11** for import/preview tasks.
 
 ### 9. Post-Launch Checks
 

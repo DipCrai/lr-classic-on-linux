@@ -4,11 +4,11 @@ Fixes for running **Adobe Lightroom Classic** on Linux with **Wine/Proton**.
 
 | Feature | Wayland | X11 |
 |---------|---------|-----|
-| Main window | ✅ Visible (patch required) | ❌ Unfixable flicker |
-| CEF Import Dialog | ❌ Opens but **freezes** on folder select | ⚠️ Works (via X11 child windows) |
-| Image Previews | ❓ Untested (binary patch may help) | ✅ Works |
+| Main window | ✅ Visible (patch required) | ⚠️ Visible but flickers |
+| CEF Import Dialog | ❌ Opens but **freezes** on folder select | ✅ Works |
+| Image Previews | ❌ Gray in filmstrip/Library grid | ✅ Works |
 | Histogram | ❌ Broken (D2D1 stub incomplete) | ❌ Broken (D2D1 stub incomplete) |
-| Develop module | ❓ Untested (previews unconfirmed) | ⚠️ Works but flickers |
+| Develop module | ✅ Works | ⚠️ Works, live preview flickers |
 
 ## Quick Start
 
@@ -45,8 +45,9 @@ See [GUIDE.md](GUIDE.md) for full setup instructions and configuration.
 - Requires: binary patch + fix_createwindow.dll + dxvk.conf
 - Launch: `scripts/launch_lightroom.sh`
 
-### X11 (not recommended)
-- Unfixable flicker on NVIDIA 580.159.03 (driver bug)
+### X11 (use for import & previews)
+- Import dialog and previews work correctly
+- Develop live preview flickers on NVIDIA 580.159.03 (driver bug)
 - No binary patch needed
 - Launch: `scripts/launch_lightroom_x11.sh`
 
@@ -76,11 +77,13 @@ D3D11CreateDeviceAndSwapChain(child HWND)
 
 ## Known Issues
 
-- **Import freeze**: CEF dialog opens but **freezes on folder select** (main thread zombie)
-- **Previews**: UNTESTED on Wayland — may still be gray/invisible
-- **Histogram**: Broken (D2D1 rendering — patched stub is incomplete)
-- **Scrolling**: Minor ghosting on Wayland
-- **Fullscreen**: May misbehave with fix_createwindow (WS_POPUP windows)
+- **Import freeze** (Wayland): CEF dialog opens but freezes on folder select — X11 works fine
+- **Gray previews** (Wayland): Filmstrip/Library grid thumbnails are gray — X11 works
+- **Histogram**: Broken on both (D2D1 stub incomplete)
+- **Live preview flicker** (X11): Develop module flickers — use Wayland for Develop
+- **Scrolling ghosting** (Wayland): Minor trailing artifacts
+- **Fullscreen**: May misbehave with fix_createwindow on both
+- **X11 crash**: Rare `X_CopyArea` under XWayland (restart to resolve)
 
 See [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
