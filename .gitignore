@@ -1,0 +1,9 @@
+*.o
+*.so
+*.dll
+*.exe
+/tmp/
+*.log
+.DS_Store
+__pycache__/
+*.pyc
