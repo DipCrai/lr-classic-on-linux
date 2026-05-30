@@ -6,6 +6,9 @@
 set -o pipefail
 
 # ========== CONFIGURATION ==========
+# NOTE: LR_DIR defaults to repo root. For a real setup, either:
+#   a) Place this repo inside your Lightroom directory, or
+#   b) Set LR_DIR/LR_EXE to your Lightroom path
 LR_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WINEPREFIX="${WINEPREFIX:-$HOME/.lightroom_prefix/pfx}"
 STEAM_COMPAT_DATA_PATH="${STEAM_COMPAT_DATA_PATH:-$HOME/.lightroom_prefix}"
@@ -14,6 +17,20 @@ PROTON_DIR="${PROTON_DIR:-$STEAM_COMPAT_CLIENT_INSTALL_PATH/compatibilitytools.d
 LR_EXE="${LR_EXE:-$LR_DIR/Lightroom.exe}"
 DXVK_CONF="${DXVK_CONF:-$LR_DIR/dxvk.conf}"
 LOG_DIR="${LOG_DIR:-/tmp/proton_logs}"
+
+# Validate Lightroom executable exists
+if [ ! -f "$LR_EXE" ]; then
+    echo "ERROR: Lightroom executable not found at: $LR_EXE"
+    echo "Set LR_EXE to your Lightroom.exe path, e.g.:"
+    echo "  LR_EXE=/path/to/Lightroom.exe ./scripts/launch_lightroom_x11.sh"
+    echo "  LR_DIR=/path/to/lightroom  ./scripts/launch_lightroom_x11.sh"
+    exit 1
+fi
+
+# Warn if DXVK config not found
+if [ ! -f "$DXVK_CONF" ]; then
+    echo "WARNING: dxvk.conf not found at $DXVK_CONF"
+fi
 
 # ========== DISPLAY BACKEND: X11 ==========
 unset PROTON_ENABLE_WAYLAND
@@ -38,6 +55,9 @@ export WINEDLLOVERRIDES="d2d1=n,b;Microsoft.AI.MachineLearning=n,b"
 # X11 variant (strips frame styles) — use fix_createwindow.c for Wayland
 HOOK_DLL="fix_createwindow.dll"
 PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow_x11.c}"
+if [ ! -f "$PATCH_SOURCE" ]; then
+    echo "WARNING: fix_createwindow source not found at $PATCH_SOURCE (AppInit will be skipped)"
+fi
 if command -v x86_64-w64-mingw32-gcc &>/dev/null && [ -f "$PATCH_SOURCE" ]; then
     x86_64-w64-mingw32-gcc -shared -O2 -s -o /tmp/fix_createwindow.dll "$PATCH_SOURCE" 2>/dev/null || true
 fi
