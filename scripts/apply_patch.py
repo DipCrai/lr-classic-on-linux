@@ -25,6 +25,10 @@ PATCH = bytes([
 ])
 
 def main():
+    print("WARNING: This patch is build-specific (GE-Proton10-34).")
+    print("For other Proton versions, the offset and call distance may differ.")
+    print()
+    
     if not os.path.exists(TARGET):
         print(f"ERROR: {TARGET} not found")
         print(f"Set PROTON_DIR to your GE-Proton installation directory")
@@ -47,8 +51,21 @@ def main():
     with open(TARGET, "wb") as f:
         f.write(data)
 
-    print(f"Patched {len(PATCH)} bytes at 0x{OFFSET:x}")
-    print("Done. Verify with: dd if={TARGET} bs=1 skip=$((0x{OFFSET:x})) count=6 2>/dev/null | xxd")
+    # Verify patch was written correctly
+    with open(TARGET, "rb") as f:
+        data = bytearray(f.read())
+    written = data[OFFSET:OFFSET+len(PATCH)]
+    if written == PATCH:
+        print(f"Patched {len(PATCH)} bytes at 0x{OFFSET:x}")
+        print(f"Done. Verify: dd if={TARGET} bs=1 skip=$((0x{OFFSET:x})) count=6 2>/dev/null | xxd")
+    else:
+        print(f"ERROR: Patch verification failed at 0x{OFFSET:x}")
+        print(f"Expected: {PATCH.hex()}")
+        print(f"Got:      {written.hex()}")
+        print("This may mean the original bytes at that offset don't match what this patch expects.")
+        print("Restoring backup...")
+        shutil.copy2(BACKUP, TARGET)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

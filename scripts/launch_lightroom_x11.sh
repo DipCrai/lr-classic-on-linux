@@ -27,16 +27,17 @@ export __GLX_VENDOR_LIBRARY_NAME=nvidia
 # DXVK
 export DXVK_CONFIG_FILE="$DXVK_CONF"
 
-# CEF flags (disable GPU compositing on X11 to reduce flicker)
-export CHROMIUM_FLAGS="--disable-gpu --in-process-gpu"
+# CEF flags (same as Wayland — GPU compositing required for CEF to render)
+export CHROMIUM_FLAGS="--in-process-gpu"
 export WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="$CHROMIUM_FLAGS"
 
 # DLL overrides
 export WINEDLLOVERRIDES="d2d1=n,b;Microsoft.AI.MachineLearning=n,b"
 
 # ========== AppInit DLL: CEF child→popup conversion ==========
+# X11 variant (strips frame styles) — use fix_createwindow.c for Wayland
 HOOK_DLL="fix_createwindow.dll"
-PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow.c}"
+PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow_x11.c}"
 if command -v x86_64-w64-mingw32-gcc &>/dev/null && [ -f "$PATCH_SOURCE" ]; then
     x86_64-w64-mingw32-gcc -shared -O2 -s -o /tmp/fix_createwindow.dll "$PATCH_SOURCE" 2>/dev/null || true
 fi

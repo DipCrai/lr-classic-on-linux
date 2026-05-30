@@ -73,7 +73,7 @@ wine64 reg add "HKLM\Software\Microsoft\Windows NT\CurrentVersion\Windows" /v "L
 dwStyle &= ~(WS_BORDER | WS_DLGFRAME | WS_THICKFRAME);
 dwExStyle &= ~(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_MDICHILD);
 ```
-(Refer to `fix_createwindow_original.c` in the Lightroom directory for the full X11 version.)
+See `patches/fix_createwindow_x11.c` for the full X11 version.
 
 ## LD_PRELOAD libraries (for reference)
 

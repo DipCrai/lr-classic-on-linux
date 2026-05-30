@@ -181,12 +181,12 @@ The binary patch (Option A above) is cleaner because it gives the wl_surface a s
 ## Files
 
 All sources and patches are available at:
-https://github.com/anomalyco/opencode/issues (or contact via WineHQ Bugzilla)
+https://github.com/DipCrai/lr-classic-on-linux
 
-- `/home/ivan/lrcfix/fix_createwindow.c` — AppInit DLL for WS_CHILD→WS_POPUP conversion
-- `/home/ivan/lrcfix/libwl_got_patch.c` — GOT-patching LD_PRELOAD (monitoring thread approach)
-- `/home/ivan/lrcfix/libwl_block_subsurface_v2.c` — Direct LD_PRELOAD (won't work due to RTLD_LOCAL)
-- Patch script: `dd if=/dev/zero bs=1 count=21 2>/dev/null | ...` (binary patch at offset 0x12efe)
+- `patches/fix_createwindow.c` — AppInit DLL for WS_CHILD→WS_POPUP conversion
+- `patches/libwl_got_patch.c` — GOT-patching LD_PRELOAD (monitoring thread approach)
+- `patches/libwl_block_subsurface_v2.c` — Direct LD_PRELOAD (won't work due to RTLD_LOCAL)
+- `scripts/apply_patch.py` — binary patch tool (reorder subsurface before VkSurface at offset 0x12efe)
 
 ---
 

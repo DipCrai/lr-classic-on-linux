@@ -22,8 +22,10 @@ cd lr-classic-on-linux
 # 2. Apply the winewayland.drv binary patch (required for Wayland)
 ./scripts/apply_patch.py
 
-# 3. Copy the CC stub DLLs into the Lightroom directory and prefix
-# (Download from the original patchforCC repo or use your existing stubs)
+# 3. Download and install CC stub DLLs (required — fix crashes)
+# Get from: https://github.com/sander110419/lightroom-cc-on-linux/tree/main/stubs/binaries
+# Or use the download script:
+./scripts/download-stubs.sh
 cp stubs/*.dll "/path/to/lightroom/"
 cp stubs/*.dll "$WINEPREFIX/drive_c/windows/system32/"
 
@@ -75,7 +77,7 @@ Or run Lightroom once — if it fails with "mfc140u.dll not found", install it w
 
 ### 4. Copy CC Stub DLLs
 
-The stub DLLs fix several crashes and missing CLSID errors. Get them from the original [patchforCC/lightroom-cc-on-linux](https://github.com/dipcrai/lr-classic-on-linux/tree/main/stubs) repo, or use your existing ones:
+The stub DLLs fix several crashes and missing CLSID errors. Get them from [sander110419/lightroom-cc-on-linux](https://github.com/sander110419/lightroom-cc-on-linux/tree/main/stubs/binaries), or use the download script:
 
 | DLL | Purpose |
 |-----|---------|
@@ -86,6 +88,10 @@ The stub DLLs fix several crashes and missing CLSID errors. Get them from the or
 | `hnetcfg.dll` | Firewall rules stub |
 
 ```bash
+# Download stubs from GitHub releases
+./scripts/download-stubs.sh
+
+# Copy to prefix and Lightroom dir
 cp stubs/*.dll "$WINEPREFIX/drive_c/windows/system32/"
 cp stubs/*.dll "/path/to/lightroom/dir/"
 ```
@@ -103,7 +109,12 @@ This patch is **required** for Wayland mode. It reorders subsurface creation to 
 python3 scripts/apply_patch.py
 ```
 
-To revert (e.g., when updating Proton):
+**Important**: This binary patch is build-specific (GE-Proton10-34). When updating Proton:
+1. First revert: `bash scripts/revert_patch.sh`
+2. Install new Proton version
+3. Update the offset in `scripts/apply_patch.py` if needed (see `patches/README.md`)
+
+To revert:
 ```bash
 bash scripts/revert_patch.sh
 ```
@@ -150,7 +161,7 @@ dxgi.syncInterval = 0
 ./scripts/launch_lightroom.sh
 ```
 
-This script auto-detects your Lightroom directory if run from the repo root. You can override defaults via environment variables:
+The script expects `Lightroom.exe` in the parent of the repo root by default (adjust `LR_DIR` or `LR_EXE` as needed). Override via environment variables:
 
 ```bash
 LR_DIR=/path/to/lightroom WINEPREFIX=~/.custom_prefix/pfx MONITOR=DP-1 ./scripts/launch_lightroom.sh
