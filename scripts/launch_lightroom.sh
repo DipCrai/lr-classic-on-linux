@@ -53,6 +53,9 @@ export WINEDLLOVERRIDES="d2d1=n,b;Microsoft.AI.MachineLearning=n,b"
 
 # ========== AppInit DLL: CEF child→popup conversion ==========
 HOOK_DLL="fix_createwindow.dll"
+if [ ! -f "$PATCH_SOURCE" ]; then
+    echo "WARNING: fix_createwindow source not found at $PATCH_SOURCE (AppInit will be skipped)"
+fi
 if command -v x86_64-w64-mingw32-gcc &>/dev/null && [ -f "$PATCH_SOURCE" ]; then
     x86_64-w64-mingw32-gcc -shared -O2 -s -o /tmp/fix_createwindow.dll "$PATCH_SOURCE" 2>/dev/null || true
 fi

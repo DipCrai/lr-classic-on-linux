@@ -1,6 +1,7 @@
 *.o
 *.so
 *.dll
+*.DLL
 !/stubs/README.md
 *.exe
 /tmp/
