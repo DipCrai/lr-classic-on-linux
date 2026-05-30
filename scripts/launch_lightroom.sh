@@ -5,7 +5,10 @@ set -o pipefail
 
 # ========== CONFIGURATION ==========
 # Edit these to match your system
-LR_DIR="$(cd "$(dirname "$0")/.." && pwd)"         # Lightroom installation directory
+# NOTE: LR_DIR defaults to repo root. For a real setup, either:
+#   a) Place this repo inside your Lightroom directory, or
+#   b) Set LR_DIR/LR_EXE to your Lightroom path
+LR_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WINEPREFIX="${WINEPREFIX:-$HOME/.lightroom_prefix/pfx}"
 STEAM_COMPAT_DATA_PATH="${STEAM_COMPAT_DATA_PATH:-$HOME/.lightroom_prefix}"
 STEAM_COMPAT_CLIENT_INSTALL_PATH="${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$HOME/.steam/root}"
@@ -15,6 +18,20 @@ DXVK_CONF="${DXVK_CONF:-$LR_DIR/dxvk.conf}"
 MONITOR="${MONITOR:-HDMI-A-1}"                      # Your Wayland monitor name (check 'wayland-info | grep name')
 LOG_DIR="${LOG_DIR:-/tmp/proton_logs}"
 PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow.c}"
+
+# Validate Lightroom executable exists
+if [ ! -f "$LR_EXE" ]; then
+    echo "ERROR: Lightroom executable not found at: $LR_EXE"
+    echo "Set LR_EXE to your Lightroom.exe path, e.g.:"
+    echo "  LR_EXE=/path/to/Lightroom.exe ./scripts/launch_lightroom.sh"
+    echo "  LR_DIR=/path/to/lightroom ./scripts/launch_lightroom.sh"
+    exit 1
+fi
+
+# Warn if DXVK config not found (script will continue with defaults)
+if [ ! -f "$DXVK_CONF" ]; then
+    echo "WARNING: dxvk.conf not found at $DXVK_CONF"
+fi
 
 # ========== DISPLAY BACKEND: Wayland ==========
 export PROTON_ENABLE_WAYLAND=1
