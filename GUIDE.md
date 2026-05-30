@@ -187,10 +187,10 @@ X11 has persistent screen-tearing on NVIDIA driver 580.159.03 because the driver
 
 After Lightroom starts:
 
-1. **Import dialog**: Should open and show thumbnails. If white/frozen, ensure `--in-process-gpu` is set (NOT `--disable-gpu`) and `fix_createwindow.dll` is registered.
-2. **Previews**: Should render correctly with the binary patch applied.
+1. **Import dialog**: Opens and CEF content is visible (with `fix_createwindow.dll`). However, **selecting a folder causes the app to freeze** (known bug, unresolved). Thumbnails may or may not be visible.
+2. **Previews**: UNTESTED — may still be gray/invisible even with the binary patch. The subsurface reorder is a necessary foundation but not yet verified.
 3. **Histogram**: Known broken (D2D1 rendering — patched stub doesn't implement all effects).
-4. **Develop module**: Should work for most operations.
+4. **Develop module**: Workable on X11 (but flickers). On Wayland, mostly untested until previews are confirmed working.
 
 ## Troubleshooting
 

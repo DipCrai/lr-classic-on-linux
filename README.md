@@ -4,11 +4,11 @@ Fixes for running **Adobe Lightroom Classic** on Linux with **Wine/Proton**.
 
 | Feature | Wayland | X11 |
 |---------|---------|-----|
-| Main UI | ✅ Works | ❌ Unfixable flicker |
-| CEF Import Dialog | ✅ Works (with fix_createwindow) | ⚠️ Works |
-| Image Previews | ✅ Works (with winewayland patch) | ✅ Works |
-| Histogram | ❌ Broken (D2D1) | ❌ Broken (D2D1) |
-| Develop module | ⚠️ Mostly works | ⚠️ Mostly works |
+| Main window | ✅ Visible (patch required) | ❌ Unfixable flicker |
+| CEF Import Dialog | ❌ Opens but **freezes** on folder select | ⚠️ Works (via X11 child windows) |
+| Image Previews | ❓ Untested (binary patch may help) | ✅ Works |
+| Histogram | ❌ Broken (D2D1 stub incomplete) | ❌ Broken (D2D1 stub incomplete) |
+| Develop module | ❓ Untested (previews unconfirmed) | ⚠️ Works but flickers |
 
 ## Quick Start
 
@@ -72,14 +72,15 @@ D3D11CreateDeviceAndSwapChain(child HWND)
 | `scripts/` | Launchers, patch tools, build scripts |
 | `patches/` | Source code for fix_createwindow.dll, LD_PRELOAD alternatives |
 | `docs/` | Root cause analysis |
-| `stubs/` | CC stub DLLs (from patchforCC project) |
+| `stubs/` | Download instructions for CC stub DLLs |
 
 ## Known Issues
 
+- **Import freeze**: CEF dialog opens but **freezes on folder select** (main thread zombie)
+- **Previews**: UNTESTED on Wayland — may still be gray/invisible
 - **Histogram**: Broken (D2D1 rendering — patched stub is incomplete)
 - **Scrolling**: Minor ghosting on Wayland
-- **CEF folder select**: May hang when selecting import folders
-- **Fullscreen**: May misbehave with fix_createwindow
+- **Fullscreen**: May misbehave with fix_createwindow (WS_POPUP windows)
 
 See [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 

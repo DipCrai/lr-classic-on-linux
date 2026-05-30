@@ -165,10 +165,11 @@ Result: persistent screen-tearing / flickering on X11 that cannot be fixed from 
 
 ## Still Broken
 
-1. **Histogram/Exposure meter** — D2D1 rendering path (patched `d2d1.dll` stub doesn't fully implement it)
-2. **Scrolling ghosting** — Minor trailing artifacts when scrolling Library grid
-3. **CEF folder select** — May still hang when selecting folders in import dialog
-4. **Fullscreen behavior** — Some `WS_POPUP` windows from `fix_createwindow` may not position correctly
+1. **CEF import folder select** — ❌ Opens but **freezes the app** when selecting a folder (main thread zombie). Known but unresolved.
+2. **Image previews** — ❓ Untested on Wayland. May still be gray/invisible even with binary patch.
+3. **Histogram/Exposure meter** — ❌ D2D1 rendering path (patched `d2d1.dll` stub doesn't fully implement it)
+4. **Scrolling ghosting** — ⚠️ Minor trailing artifacts when scrolling Library grid
+5. **Fullscreen behavior** — ⚠️ Some `WS_POPUP` windows from `fix_createwindow` may not position correctly
 
 ## LD_PRELOAD Alternative (for testing without binary patch)
 

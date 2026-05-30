@@ -95,6 +95,18 @@ CEF (Chromium Embedded Framework) creates child windows (`WS_CHILD`) for its web
 
 By converting CEF's `WS_CHILD` windows to `WS_POPUP` (top-level), each CEF window gets its own `xdg_toplevel` role separate from the parent. This avoids both the subsurface rendering issues and the role conflict.
 
+### Remaining Problem: Folder Select Freeze
+
+Even with the binary patch (subsurface reorder) + `fix_createwindow.dll`, selecting a folder in the import dialog **freezes the app entirely**. The main thread becomes `<defunct>` (zombie) while render threads continue running.
+
+This is likely a **separate issue** from the wl_surface role conflict — possibly in D3D12/vkd3d thumbnail rendering, D2D1 histogram, or mfplat stub interaction. Unresolved.
+
+### Status Summary
+
+The binary patch successfully makes the **main window visible** on Wayland by preventing the VkSurface↔wl_subsurface role conflict. However, two major issues remain unconfirmed or unresolved:
+1. **CEF import folder select** freezes the app
+2. **Image previews** have not been tested and may still fail
+
 ### Why --disable-gpu Breaks It
 
 `--disable-gpu` makes CEF use software rendering (GDI via `wl_shm` buffer). On Wayland with winewayland.drv, this means:
