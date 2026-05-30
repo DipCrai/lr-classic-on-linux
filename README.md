@@ -61,6 +61,10 @@ See [GUIDE.md](GUIDE.md) for full setup instructions.
 
 See [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
 
+## AI Disclosure
+
+This project was developed with assistance from an AI coding agent (opencode). The analysis, patches, and documentation were produced through iterative collaboration between human and AI.
+
 ## License
 
 MIT

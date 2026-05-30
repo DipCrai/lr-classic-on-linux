@@ -190,6 +190,10 @@ https://github.com/anomalyco/opencode/issues (or contact via WineHQ Bugzilla)
 
 ---
 
+## AI Disclosure
+
+This analysis and associated fixes were developed with assistance from an AI coding agent (opencode). The investigation involved automated binary analysis, protocol debugging, and iterative patch development guided by human direction.
+
 ## Submit to:
 
 1. **WineHQ Bugzilla** — https://bugs.winehq.org/ — winewayland.drv component
