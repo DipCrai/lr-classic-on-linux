@@ -34,16 +34,21 @@ def main():
         print(f"Set PROTON_DIR to your GE-Proton installation directory")
         sys.exit(1)
 
+    with open(TARGET, "rb") as f:
+        data = bytearray(f.read())
+
+    current = data[OFFSET:OFFSET+len(PATCH)]
+    if current == PATCH:
+        print(f"Patch already applied at 0x{OFFSET:x} — nothing to do.")
+        return
+
     if not os.path.exists(BACKUP):
         shutil.copy2(TARGET, BACKUP)
         print(f"Backup: {BACKUP}")
     else:
         print(f"Backup exists: {BACKUP}")
 
-    with open(TARGET, "rb") as f:
-        data = bytearray(f.read())
-
-    original = data[OFFSET:OFFSET+len(PATCH)]
+    original = current
     print(f"Original at 0x{OFFSET:x}: {original.hex()}")
 
     data[OFFSET:OFFSET+len(PATCH)] = PATCH

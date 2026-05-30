@@ -41,10 +41,14 @@ When scrolling in the Library grid, some trailing/ghosting artifacts appear. Lik
 
 WS_POPUP windows created by `fix_createwindow.dll` may not position correctly in fullscreen mode. Window decorations may be missing or incorrect.
 
-## 6. NVIDIA X11 Flickering
+## 6. X11 — Flickering + Intermittent Crash
 
-**Status**: ❌ UNFIXABLE.
+**Status**: ⚠️ Works but has issues.
 
-NVIDIA driver 580.159.03 bypasses both Vulkan Present (VK_PRESENT_MODE_FIFO_KHR) and GLX Present (GLX_EXT_swap_control), causing persistent tearing/flickering on X11. This is a driver bug.
+NVIDIA driver 580.159.03 bypasses both Vulkan Present (VK_PRESENT_MODE_FIFO_KHR) and GLX Present (GLX_EXT_swap_control), causing persistent tearing/flickering on X11. This is a driver bug — no known fix.
 
-**Workaround**: Use Wayland only.
+Additionally, when running under XWayland, an intermittent `X_CopyArea` crash (`BadMatch`) may occur. This is an XWayland GLAMOR bug (#1317) triggered by child window compositing.
+
+X11 can launch and render correctly, but flickering is always present and the XWayland crash is unpredictable.
+
+**Workaround**: Use Wayland (primary target).
