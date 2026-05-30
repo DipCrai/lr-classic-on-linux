@@ -6,9 +6,9 @@ Fixes for running **Adobe Lightroom Classic** on Linux with **Wine/Proton + Wayl
 
 | Feature | Wayland | X11 |
 |---------|---------|-----|
-| Main UI | ✅ Works | ❌ Unfixable flickering |
-| CEF Import Dialog | ⚠️ Works (with fix_createwindow) | ✅ Works |
-| Image Previews | ⚠️ Works (with winewayland patch) | ✅ Works |
+| Main UI | ✅ Works | ❌ Unfixable flickering on Nvidia |
+| CEF Import Dialog | ⚠️ Partially works with hangs (with fix_createwindow) | ✅ Works |
+| Image Previews | ⚠️ Should work (with winewayland patch) | ✅ Works |
 | Histogram | ❌ Broken (D2D1) | ❌ Broken (D2D1) |
 | Develop module | ⚠️ Mostly works | ⚠️ Mostly works |
 | Export | ✅ Works | ✅ Works |
