@@ -1,7 +1,7 @@
 #!/bin/bash
-# Lightroom Classic on Linux — X11 launcher
-# NOTE: X11 has UNFIXABLE flickering on NVIDIA 580.159.03 driver.
-# This is provided for reference only — use Wayland (launch_lightroom.sh) for a working setup.
+# Lightroom Classic on Linux — X11 launcher (RECOMMENDED)
+# X11 is the recommended mode: Import ✅, Previews ✅, Library histogram ✅.
+# Develop live preview flickers on NVIDIA 580.159.03 — use Wayland for Develop.
 # Source: https://github.com/DipCrai/lr-classic-on-linux
 set -o pipefail
 
