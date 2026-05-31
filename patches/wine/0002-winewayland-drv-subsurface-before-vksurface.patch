@@ -1,0 +1,105 @@
+From 869efd09d4ed9380f001241f1859ff61ffeac8e9 Mon Sep 17 00:00:00 2001
+From: DipCrai <95180035+DipCrai@users.noreply.github.com>
+Date: Sun, 31 May 2026 15:18:17 +0300
+Subject: [PATCH] winewayland.drv: Assign wl_subsurface role before VkSurface
+ creation
+
+Move set_client_surface (which creates the wl_subsurface via
+wayland_client_surface_attach) before vkCreateWaylandSurfaceKHR
+in wayland_vulkan_surface_create. This ensures the wl_surface has
+its subsurface role assigned before the Vulkan Wayland driver
+processes it for VkSurface creation.
+
+The NVIDIA Vulkan Wayland driver (proprietary) rejects swapchain
+creation if a wl_surface's role changes after VkSurface creation.
+By assigning the subsurface role first, we avoid this issue.
+
+Also remove the NtUserIsWindowVisible check in set_client_surface
+so that the subsurface is always created when a toplevel parent
+exists, ensuring the role is consistent regardless of visibility.
+
+Additionally, promote child windows with WS_EX_APPWINDOW to
+xdg_toplevel instead of subsurface, allowing CEF and similar
+frameworks to create independent popup dialogs.
+
+Based on testing with Adobe Lightroom Classic and GE-Proton.
+---
+ dlls/winewayland.drv/vulkan.c | 10 ++++++++++
+ dlls/winewayland.drv/window.c | 14 ++++++++++----
+ 2 files changed, 20 insertions(+), 4 deletions(-)
+
+diff --git a/dlls/winewayland.drv/vulkan.c b/dlls/winewayland.drv/vulkan.c
+index b2e9110..1917cb4 100644
+--- a/dlls/winewayland.drv/vulkan.c
++++ b/dlls/winewayland.drv/vulkan.c
+@@ -48,6 +48,14 @@ static VkResult wayland_vulkan_surface_create(HWND hwnd, const struct vulkan_ins
+     TRACE("%p %p %p %p\n", hwnd, instance, handle, client);
+ 
+     if (!(surface = wayland_client_surface_create(hwnd))) return VK_ERROR_OUT_OF_HOST_MEMORY;
++
++    /* Assign the client surface (and thus the wl_subsurface role) before
++     * creating the VkSurface, so that the wl_surface already has its role
++     * when the Vulkan Wayland driver processes it. This prevents a role
++     * change after VkSurface creation, which can cause NVIDIA's Wayland
++     * driver to reject swapchain creation. */
++    set_client_surface(hwnd, surface);
++
+     create_info_host.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+     create_info_host.pNext = NULL;
+     create_info_host.flags = 0; /* reserved */
+@@ -58,10 +66,12 @@ static VkResult wayland_vulkan_surface_create(HWND hwnd, const struct vulkan_ins
+     if (res != VK_SUCCESS)
+     {
+         ERR("Failed to create vulkan wayland surface, res=%d\n", res);
++        wayland_client_surface_attach(surface, NULL);
+         client_surface_release(&surface->client);
+         return res;
+     }
+ 
++    /* The second call is idempotent; subsurface is already created above. */
+     set_client_surface(hwnd, surface);
+     *client = &surface->client;
+ 
+diff --git a/dlls/winewayland.drv/window.c b/dlls/winewayland.drv/window.c
+index 88eee34..3ffa196 100644
+--- a/dlls/winewayland.drv/window.c
++++ b/dlls/winewayland.drv/window.c
+@@ -203,7 +203,8 @@ static BOOL wayland_win_data_create_wayland_surface(struct wayland_win_data *dat
+                (!(exstyle & WS_EX_LAYERED) || data->layered_attribs_set);
+ 
+     if (!visible) role = WAYLAND_SURFACE_ROLE_NONE;
+-    else if (toplevel_surface) role = WAYLAND_SURFACE_ROLE_SUBSURFACE;
++    else if (toplevel_surface && !(exstyle & WS_EX_APPWINDOW))
++        role = WAYLAND_SURFACE_ROLE_SUBSURFACE;
+     else role = WAYLAND_SURFACE_ROLE_TOPLEVEL;
+ 
+     /* we can temporarily clear the role of a surface but cannot assign a different one after it's set */
+@@ -385,9 +386,14 @@ static BOOL is_window_managed(HWND hwnd, UINT swp_flags, BOOL fullscreen)
+ {
+     DWORD style, ex_style;
+ 
+-    /* child windows are not managed */
++    /* child windows are not managed, unless they explicitly opt into
++     * app-level window management via WS_EX_APPWINDOW */
+     style = NtUserGetWindowLongW(hwnd, GWL_STYLE);
+-    if ((style & (WS_CHILD|WS_POPUP)) == WS_CHILD) return FALSE;
++    if ((style & (WS_CHILD|WS_POPUP)) == WS_CHILD)
++    {
++        ex_style = NtUserGetWindowLongW(hwnd, GWL_EXSTYLE);
++        if (!(ex_style & WS_EX_APPWINDOW)) return FALSE;
++    }
+     /* activated windows are managed */
+     if (!(swp_flags & (SWP_NOACTIVATE|SWP_HIDEWINDOW))) return TRUE;
+     if (hwnd == get_active_window()) return TRUE;
+@@ -826,7 +832,7 @@ void set_client_surface(HWND hwnd, struct wayland_client_surface *new_client)
+ 
+         if ((data->client_surface = new_client))
+         {
+-            if (toplevel && NtUserIsWindowVisible(hwnd))
++            if (toplevel)
+                 wayland_client_surface_attach(new_client, toplevel);
+             else
+                 wayland_client_surface_attach(new_client, NULL);
+-- 
+2.54.0
+

@@ -68,6 +68,25 @@ if [ -f /tmp/fix_createwindow.dll ]; then
     "$PROTON_DIR/files/bin/wine64" reg add "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /t REG_DWORD /d 1 /f 2>/dev/null
 fi
 
+# ========== Fix 3: Histogram (TempDisable GPU2+3 — CPU fallback) ==========
+GPU_DIR="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw/GPU/Adobe Photoshop Lightroom Classic"
+mkdir -p "$GPU_DIR" 2>/dev/null
+touch "$GPU_DIR/TempDisableGPU2" "$GPU_DIR/TempDisableGPU3"
+
+# Background watcher — recreates TempDisable files if CameraRaw deletes them
+WATCHER_PID=""
+camera_raw_watcher() {
+    local dir="$1"
+    while true; do
+        for f in TempDisableGPU2 TempDisableGPU3; do
+            [ ! -f "$dir/$f" ] && touch "$dir/$f"
+        done
+        sleep 3
+    done
+}
+camera_raw_watcher "$GPU_DIR" &
+WATCHER_PID=$!
+
 # ========== Logs ==========
 export PROTON_LOG=1
 export PROTON_LOG_DIR="$LOG_DIR"
@@ -89,6 +108,10 @@ WINEDLLOVERRIDES="$WINEDLLOVERRIDES" \
 
 echo "Exit: $?"
 
-# ========== Cleanup AppInit ==========
+# ========== Cleanup ==========
+# Kill background watcher
+[ -n "$WATCHER_PID" ] && kill "$WATCHER_PID" 2>/dev/null
+
+# Cleanup AppInit
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /f 2>/dev/null
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /f 2>/dev/null

@@ -1,13 +1,9 @@
 #!/bin/bash
-# Lightroom Classic on Linux — Wayland launcher
+# Lightroom Classic on Linux — ALL FIXES merged launcher (Wayland)
 # Source: https://github.com/DipCrai/lr-classic-on-linux
 set -o pipefail
 
 # ========== CONFIGURATION ==========
-# Edit these to match your system
-# NOTE: LR_DIR defaults to repo root. For a real setup, either:
-#   a) Place this repo inside your Lightroom directory, or
-#   b) Set LR_DIR/LR_EXE to your Lightroom path
 LR_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WINEPREFIX="${WINEPREFIX:-$HOME/.lightroom_prefix/pfx}"
 STEAM_COMPAT_DATA_PATH="${STEAM_COMPAT_DATA_PATH:-$HOME/.lightroom_prefix}"
@@ -15,11 +11,12 @@ STEAM_COMPAT_CLIENT_INSTALL_PATH="${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$HOME/.ste
 PROTON_DIR="${PROTON_DIR:-$STEAM_COMPAT_CLIENT_INSTALL_PATH/compatibilitytools.d/Proton-GE Latest}"
 LR_EXE="${LR_EXE:-$LR_DIR/Lightroom.exe}"
 DXVK_CONF="${DXVK_CONF:-$LR_DIR/dxvk.conf}"
-MONITOR="${MONITOR:-HDMI-A-1}"                      # Your Wayland monitor name (check 'wayland-info | grep name')
+MONITOR="${MONITOR:-HDMI-A-1}"
 LOG_DIR="${LOG_DIR:-/tmp/proton_logs}"
 PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow.c}"
+SCRIPTS_DIR="$(dirname "$0")"
 
-# Validate Lightroom executable exists
+# Validate Lightroom executable
 if [ ! -f "$LR_EXE" ]; then
     echo "ERROR: Lightroom executable not found at: $LR_EXE"
     echo "Set LR_EXE to your Lightroom.exe path, e.g.:"
@@ -28,30 +25,22 @@ if [ ! -f "$LR_EXE" ]; then
     exit 1
 fi
 
-# Warn if DXVK config not found (script will continue with defaults)
 if [ ! -f "$DXVK_CONF" ]; then
     echo "WARNING: dxvk.conf not found at $DXVK_CONF"
 fi
 
-# ========== DISPLAY BACKEND: Wayland ==========
-export PROTON_ENABLE_WAYLAND=1
-export PROTON_WAYLAND_MONITOR="$MONITOR"
+mkdir -p "$LOG_DIR"
 
-# NVIDIA GBM (required for Wayland + NVIDIA)
-export GBM_BACKEND=nvidia-drm
-export __GLX_VENDOR_LIBRARY_NAME=nvidia
+# ========== FIX 1: Binary patches (winewayland.so) ==========
+echo "=== Fix 1: winewayland.so binary patches ==="
+if python3 "$SCRIPTS_DIR/apply_patch.py" 2>&1; then
+    echo "  ✓ Binary patches applied/verified"
+else
+    echo "  ! Patch check failed (non-fatal, continuing)"
+fi
 
-# DXVK config
-export DXVK_CONFIG_FILE="$DXVK_CONF"
-
-# CEF import dialog flags (must use GPU rendering, NOT --disable-gpu)
-export CHROMIUM_FLAGS="--in-process-gpu"
-export WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="$CHROMIUM_FLAGS"
-
-# DLL overrides (d2d1 stub required for startup, ML stub fixes a crash)
-export WINEDLLOVERRIDES="d2d1=n,b;Microsoft.AI.MachineLearning=n,b"
-
-# ========== AppInit DLL: CEF child→popup conversion ==========
+# ========== FIX 2: AppInit DLL (CEF child→popup) ==========
+echo "=== Fix 2: fix_createwindow.dll (CEF import dialog) ==="
 HOOK_DLL="fix_createwindow.dll"
 if [ ! -f "$PATCH_SOURCE" ]; then
     echo "WARNING: fix_createwindow source not found at $PATCH_SOURCE (AppInit will be skipped)"
@@ -64,14 +53,45 @@ if [ -f /tmp/fix_createwindow.dll ]; then
     cp /tmp/fix_createwindow.dll "$WINEPREFIX/drive_c/windows/system32/$HOOK_DLL" 2>/dev/null
     "$PROTON_DIR/files/bin/wine64" reg add "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /t REG_SZ /d "C:\\windows\\system32\\$HOOK_DLL" /f 2>/dev/null
     "$PROTON_DIR/files/bin/wine64" reg add "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /t REG_DWORD /d 1 /f 2>/dev/null
+    echo "  ✓ AppInit DLL registered"
 fi
 
-# ========== Logs ==========
+# ========== FIX 3: Histogram (TempDisable GPU2+3 — CPU fallback) ==========
+echo "=== Fix 3: Histogram (CPU fallback via TempDisable) ==="
+GPU_DIR="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw/GPU/Adobe Photoshop Lightroom Classic"
+mkdir -p "$GPU_DIR" 2>/dev/null
+touch "$GPU_DIR/TempDisableGPU2" "$GPU_DIR/TempDisableGPU3"
+echo "  ✓ TempDisableGPU2+3 created (D3D11+D3D12 compute disabled, CPU fallback)"
+
+# Background watcher — recreates TempDisable files if CameraRaw deletes them
+WATCHER_PID=""
+camera_raw_watcher() {
+    local dir="$1"
+    while true; do
+        for f in TempDisableGPU2 TempDisableGPU3; do
+            [ ! -f "$dir/$f" ] && touch "$dir/$f"
+        done
+        sleep 3
+    done
+}
+camera_raw_watcher "$GPU_DIR" &
+WATCHER_PID=$!
+echo "  ✓ Histogram watcher started (PID $WATCHER_PID)"
+
+# ========== ENVIRONMENT ==========
+export PROTON_ENABLE_WAYLAND=1
+export PROTON_WAYLAND_MONITOR="$MONITOR"
+export GBM_BACKEND=nvidia-drm
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export DXVK_CONFIG_FILE="$DXVK_CONF"
+export CHROMIUM_FLAGS="--in-process-gpu"
+export WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="$CHROMIUM_FLAGS"
+export WINEDLLOVERRIDES="d2d1=n,b;Microsoft.AI.MachineLearning=n,b"
 export PROTON_LOG=1
 export PROTON_LOG_DIR="$LOG_DIR"
-mkdir -p "$LOG_DIR"
 
-# ========== Launch ==========
+# ========== LAUNCH ==========
+echo "=== Launching Lightroom ==="
 STEAM_COMPAT_DATA_PATH="$STEAM_COMPAT_DATA_PATH" \
 STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM_COMPAT_CLIENT_INSTALL_PATH" \
 WINEPREFIX="$WINEPREFIX" \
@@ -85,10 +105,19 @@ __GLX_VENDOR_LIBRARY_NAME="$__GLX_VENDOR_LIBRARY_NAME" \
 CHROMIUM_FLAGS="$CHROMIUM_FLAGS" \
 WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="$WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS" \
 WINEDLLOVERRIDES="$WINEDLLOVERRIDES" \
+WINEDEBUG="$WINEDEBUG" \
 "$PROTON_DIR/proton" run "$LR_EXE" 2>&1 | tee "$LOG_DIR/lr_wayland.log"
 
-echo "Exit: $?"
+LR_EXIT=$?
+echo "Lightroom exited with code $LR_EXIT"
 
-# ========== Cleanup AppInit ==========
+# ========== CLEANUP ==========
+echo "=== Cleanup ==="
+# Kill background watcher
+[ -n "$WATCHER_PID" ] && kill "$WATCHER_PID" 2>/dev/null && echo "  ✓ Watcher stopped"
+
+# Remove AppInit registry entries
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /f 2>/dev/null
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /f 2>/dev/null
+echo "  ✓ AppInit registry cleaned"
+echo "=== Done ==="
