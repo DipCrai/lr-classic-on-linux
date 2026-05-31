@@ -103,9 +103,30 @@ This is likely a **separate issue** from the wl_surface role conflict — possib
 
 ### Status Summary
 
-The binary patch successfully makes the **main window visible** on Wayland by preventing the VkSurface↔wl_subsurface role conflict. However, two major issues remain unconfirmed or unresolved:
-1. **CEF import folder select** freezes the app
-2. **Image previews** have not been tested and may still fail
+The binary patch successfully makes the **main window visible** on Wayland by preventing the VkSurface↔wl_subsurface role conflict. However, child window previews remain gray (separate wl_surfaces needed per HWND — clean fix is in Wine source).
+
+### Root Cause Update: DXVK + vkd3d-proton In-Process Conflict
+
+**Confirmed in Session 6 (2026-05-31)**. DXVK and vkd3d-proton corrupt each other when both are loaded in the same process. This affects CameraRaw's compute pipeline, which uses both D3D11 (DXVK) and D3D12 (vkd3d-proton).
+
+**Test matrix**:
+
+| Config | D3D11 | D3D12 | Library Histo | Develop Histo | Notes |
+|--------|-------|-------|---------------|---------------|-------|
+| GPU3-only | DXVK | OFF | ✅ | ❌ | Best X11 config |
+| GPU2-only | OFF | vkd3d | ❌ | ✅ | Only histo works |
+| Both on | DXVK | vkd3d | ❌ broken | ❌ broken | Corruption |
+| Both off (CPU) | CPU | CPU | ✅ | ✅ | Slow |
+| WineD3D + vkd3d | WineD3D | vkd3d | ❌ | ❌ | Same corruption |
+| Wine d3d12 + DXVK | DXVK | Wine (CPU) | ✅ | ✅ | CPU fallback |
+| LVP software | LVP+DXVK | LVP+vkd3d | ❌ | ❌ | Software too! |
+
+**Key insight**: Even on **LVP software Vulkan** (llvmpipe) on a CPU with no NVIDIA driver, the corruption occurs. This proves it's not a driver bug but an in-process software conflict between DXVK and vkd3d-proton — likely shared DXGI state, thread synchronization, or SPIR-V pipeline cache corruption.
+
+**No workaround exists** for using both GPU compute paths. The only options are:
+1. **GPU3-only** (TempDisableGPU3) — D3D11 GPU, D3D12 off. Works for everything except Develop histogram.
+2. **CPU fallback** (TempDisableGPU2+3) — all compute on CPU. Works but slower.
+3. **Switch configs manually** based on what you're doing (e.g., GPU3-only for browsing, remove TempDisable for Develop histogram work).
 
 ### Why --disable-gpu Breaks It
 

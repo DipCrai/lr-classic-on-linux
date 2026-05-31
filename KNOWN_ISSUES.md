@@ -1,58 +1,80 @@
 # Known Issues
 
-## 1. CEF Import Dialog — Folder Select Freeze (Wayland only)
+## 1. Develop Histogram — DXVK + vkd3d-proton Conflict (Pascal)
+
+**Status**: ❌ Develop histogram blank on all configs except CPU fallback.
+
+**Root cause**: DXVK (Vulkan D3D11) and vkd3d-proton (Vulkan D3D12) corrupt each other when both active in the same process. Confirmed on NVIDIA GTX 1080 Ti (Pascal, driver 580.159.03) AND on software Vulkan (llvmpipe/LVP) — not a GPU driver bug, but a DXVK/vkd3d-proton in-process software conflict.
+
+**Proof**:
+- GPU3-only (D3D12 off, D3D11 on) → works except Develop histogram ❌
+- GPU2-only (D3D11 compute off, D3D12 on) → Develop histogram ✅, everything else ❌
+- Both on → Develop preview ✅ only, everything else broken ❌
+- Both off (CPU) → everything works ✅ but slow
+- Wine built-in d3d12 (no vkd3d-proton) → full CPU fallback ✅
+- D3D12 no-op proxy (vtable hooks, real vkd3d-proton loaded) → corruption ❌
+- LVP software Vulkan for everything → SAME corruption ❌
+
+**No known fix**. Upstream DXVK/vkd3d-proton investigation needed.
+
+**Workaround**: The launcher scripts create TempDisableGPU2+3 in CameraRaw's GPU config directory, forcing CPU fallback for all compute (works, slower).
+
+## 2. CEF Import Dialog — Folder Select Freeze (Wayland)
 
 **Status**: ❌ Wayland: freezes on folder select. ✅ X11: works.
 
-On Wayland, the import dialog opens and CEF content is visible (thanks to `fix_createwindow.dll`). However, selecting a folder **freezes the main thread** while render threads stay alive. The app becomes completely unresponsive.
-
-On X11, the import dialog works correctly.
+On Wayland, the import dialog opens and CEF content is visible. Selecting a folder freezes the main thread completely. All render threads stay alive (DXVK + CEF GPU process). X11 works fine.
 
 **Possible causes** (unconfirmed):
-- Thumbnail swapchain triggers new D3D11 surfaces → some still fail
+- Thumbnail swapchain triggers new D3D11 surfaces that still fail
 - D3D12/vkd3d code path (not patched by binary patch)
 - D2D1 histogram rendering (known broken stub)
-- Media Foundation stub (`mfplat.dll`) causing deadlock
+- mfplat stub deadlock
 - CEF IPC deadlock with `--in-process-gpu`
 
-**No known fix yet.**
-
-## 2. Image Previews (Wayland only)
+## 3. Image Previews (Wayland)
 
 **Status**: ❌ Wayland: gray rectangles in filmstrip/Library grid. ✅ X11: works.
 
-On Wayland, the main image and Develop module render correctly, but small previews in the bottom filmstrip and Library grid are gray. The binary patch (subsurface reorder) was designed to fix this but is not sufficient.
+On Wayland, the main image and Develop module render correctly, but small previews are gray. The binary patch (subsurface reorder) avoids the hang but child window wl_surfaces still get conflicting roles — subsurface + VkSurface on the same wl_surface. Fix requires separate wl_surfaces per HWND (Wine source change in winewayland.drv).
 
-The root cause is the same `wl_surface` role conflict between `wl_subsurface` and `VkSurfaceKHR` — the binary patch avoids the hang but the subsurface role may still interfere with certain swapchain configurations.
+## 4. Library Histogram (Wayland)
 
-## 3. Histogram / Exposure Meter (D2D1)
+**Status**: ❌ Wayland: broken. ✅ X11: works (GPU3-only config).
 
-**Status**: ❌ Broken on both X11 and Wayland.
+Wayland's wl_surface role conflict affects all D3D11 swapchains, including the histogram render target. X11 with GPU3-only config works because D3D12 is disabled and D3D11 compute runs via DXVK.
 
-The histogram and exposure meter use D2D1 (Direct2D). The patched `d2d1.dll` from the CC stubs doesn't fully implement all D2D1 effects. No known fix.
-
-## 4. Live Preview Flicker (X11 only)
+## 5. Live Preview Flicker (X11)
 
 **Status**: ⚠️ Develop live preview flickers on X11.
 
-NVIDIA driver 580.159.03 bypasses both Vulkan Present (VK_PRESENT_MODE_FIFO_KHR) and GLX Present (GLX_EXT_swap_control), causing tearing/flickering specifically in the Develop module live preview.
+NVIDIA driver 580.159.03 bypasses both Vulkan Present (VK_PRESENT_MODE_FIFO_KHR) and GLX Present, causing tearing/flickering. Use Wayland for Develop work.
 
-Use Wayland for a flicker-free Develop experience.
+## 6. Scrolling Ghosting (Wayland)
 
-## 5. Scrolling Ghosting / Trailing (Wayland)
+**Status**: ⚠️ Minor trailing artifacts when scrolling Library grid.
 
-**Status**: ⚠️ Minor artifact on Wayland.
+Likely related to `dxgi.syncInterval = 0` + wl_subsurface presentation timing.
 
-When scrolling in the Library grid, some trailing/ghosting artifacts appear. Likely related to `dxgi.syncInterval = 0` + wl_subsurface presentation timing.
-
-## 6. Fullscreen Behavior
+## 7. Fullscreen Behavior
 
 **Status**: ⚠️ Inconsistent on both.
 
-WS_POPUP windows created by `fix_createwindow.dll` may not position correctly in fullscreen mode. Window decorations may be missing or incorrect.
+WS_POPUP windows created by `fix_createwindow.dll` may not position correctly in fullscreen mode.
 
-## 7. X11 Intermittent Crash
+## 8. X11 Intermittent Crash
 
-**Status**: ⚠️ Rare `X_CopyArea` crash under XWayland.
+**Status**: ⚠️ Rare `X_CopyArea` BadMatch under XWayland.
 
-When running Lightroom under XWayland on NVIDIA, an infrequent `X_CopyArea` `BadMatch` error may occur. This is an XWayland GLAMOR bug (#1317) triggered by child window compositing. Restarting usually resolves it.
+XWayland GLAMOR bug (#1317) triggered by child window compositing. Restart resolves it.
+
+## Summary Table
+
+| Issue | X11 | Wayland |
+|-------|-----|---------|
+| Develop histogram | ❌ (blank) | ❌ |
+| Import dialog | ✅ | ❌ (freeze) |
+| Previews | ✅ | ❌ (gray) |
+| Library histogram | ✅ (GPU3-only) | ❌ |
+| Develop module | ⚠️ (flicker) | ✅ |
+| Fullscreen | ⚠️ | ⚠️ |

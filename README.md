@@ -1,95 +1,83 @@
-# (WIP) Adobe Lightroom Classic on Linux
+# Adobe Lightroom Classic on Linux
 
-Fixes for running **Adobe Lightroom Classic** on Linux with **Wine/Proton**.
+Fixes and analysis for running **Adobe Lightroom Classic** on Linux via **Wine/Proton**.
 
-| Feature | Wayland | X11 |
-|---------|---------|-----|
-| Main window | ✅ Visible (patch required) | ⚠️ Visible but flickers |
-| CEF Import Dialog | ❌ Opens but **freezes** on folder select | ✅ Works |
-| Image Previews | ❌ Gray in filmstrip/Library grid | ✅ Works |
-| Histogram | ❌ Broken (D2D1 stub incomplete) | ❌ Broken (D2D1 stub incomplete) |
-| Develop module | ✅ Works | ⚠️ Works, live preview flickers |
+## Status
+
+| Feature | X11 (recommended) | Wayland |
+|---------|-------------------|---------|
+| Main window | ✅ | ✅ (patch required) |
+| Import dialog | ✅ | ❌ (freezes on folder select) |
+| Image previews | ✅ | ❌ (gray) |
+| Library histogram | ✅ (D3D11 GPU) | ❌ |
+| Develop module | ⚠️ (live preview flickers) | ✅ |
+| Develop histogram | ❌ (DXVK/vkd3d-proton conflict) | ❌ |
+
+**Best X11 config**: TempDisableGPU3 only — D3D11 GPU for everything except Develop histogram (CPU fallback when needed).
+
+**Root cause confirmed**: DXVK + vkd3d-proton corrupt each other when both active in the same process. Confirmed on both NVIDIA (580.159.03) AND software Vulkan (llvmpipe/LVP) — in-process software conflict, not a driver bug.
 
 ## Quick Start
 
 ```bash
-# Clone repo
 git clone https://github.com/DipCrai/lr-classic-on-linux.git
 cd lr-classic-on-linux
 
-# 1. Apply binary patch (required for Wayland)
+# Apply binary patch (required for Wayland only)
 python3 scripts/apply_patch.py
 
-# 2. Set up prefix and install VC++ runtimes
+# Set up prefix and install VC++ runtimes
 WINEPREFIX=$HOME/.lightroom_prefix/pfx winetricks -q vcrun2022
 
-# 3. Install CC stub DLLs (see GUIDE.md)
-cp /path/to/stubs/*.dll "$WINEPREFIX/drive_c/windows/system32/"
+# Download and install CC stub DLLs
+./scripts/download-stubs.sh
 
-# 4. Launch!
-./scripts/launch_lightroom.sh
+# Launch!
+./scripts/launch_lightroom_x11.sh   # X11 (stable, recommended)
+./scripts/launch_lightroom.sh       # Wayland (flicker-free, partial)
 ```
 
-See [GUIDE.md](GUIDE.md) for full setup instructions and configuration.
+Full setup: [GUIDE.md](GUIDE.md)
 
-## The Problem
+## Root Causes
 
-`winewayland.drv` creates a `wl_subsurface` on the **same** `wl_surface` used by `VkSurfaceKHR`. Wayland forbids giving a surface multiple roles. The NVIDIA Wayland driver enforces this and refuses swapchain creation → gray previews and hangs.
-
-**Fix**: A binary patch reorders operations so the subsurface is created **before** `vkCreateWaylandSurfaceKHR`, avoiding the role conflict.
-
-## Two Display Modes
-
-### Wayland (recommended)
-- Flicker-free rendering
-- Requires: binary patch + fix_createwindow.dll + dxvk.conf
-- Launch: `scripts/launch_lightroom.sh`
-
-### X11 (use for import & previews)
-- Import dialog and previews work correctly
-- Develop live preview flickers on NVIDIA 580.159.03 (driver bug)
-- No binary patch needed
-- Launch: `scripts/launch_lightroom_x11.sh`
-
-## Root Cause
-
-Detailed analysis in [docs/ROOT_CAUSE.md](docs/ROOT_CAUSE.md). Brief call chain:
-
-```
-D3D11CreateDeviceAndSwapChain(child HWND)
- → DXVK → vkCreateWin32SurfaceKHR(hwnd)
- → winewayland.drv → wayland_vulkan_surface_create(hwnd)
-   → wl_compositor_create_surface() → wl_surface
-   → vkCreateWaylandSurfaceKHR(wl_surface)    ← VkSurface role
-   → set_client_surface(hwnd, client)
-     → wl_subcompositor.get_subsurface(wl_surface)  ← wl_subsurface role (CONFLICT!)
-     → NVIDIA refuses swapchain → DXVK hangs
-```
+| Issue | Root Cause | Status |
+|-------|------------|--------|
+| Gray previews (Wayland) | Same `wl_surface` gets both `wl_subsurface` + `VkSurfaceKHR` roles — role conflict | ⚠️ Binary patch avoids hang but gray persists |
+| Import freeze (Wayland) | CEF folder select deadlock | ❌ Unresolved |
+| Develop histogram blank | DXVK + vkd3d-proton in-process conflict on Pascal | ❌ Use CPU (TempDisableGPU2+3) |
+| X11 flickering | NVIDIA 580.159.03 driver bypasses vsync | ❌ Use Wayland for Develop |
+| Library histogram ✅ | D3D11 compute via DXVK works | ✅ GPU3-only config |
 
 ## What's in this repo
 
 | Directory | Contents |
 |-----------|----------|
-| `scripts/` | Launchers, patch tools, build scripts |
-| `patches/` | Source code for fix_createwindow.dll, LD_PRELOAD alternatives |
-| `docs/` | Root cause analysis |
-| `stubs/` | Download instructions for CC stub DLLs |
+| `scripts/` | Launchers, patch tools, histogram watcher |
+| `patches/` | `fix_createwindow.c`, Wine source patches, LD_PRELOAD alts |
+| `patches/wine/` | `CreateDirect3D11DeviceFromDXGIDevice` + winewayland source patches |
+| `docs/` | Root cause analysis (wl_surface + DXVK/vkd3d-proton) |
+| `stubs/` | CC stub DLLs |
+
+## Key Findings
+
+- **CreateDirect3D11DeviceFromDXGIDevice**: CameraRaw delay-imports this from d3d11.dll — not exported by DXVK or upstream Wine. Wine source patch at `patches/wine/0001-*`.
+- **GPU2 vs GPU3**: GPU2 = D3D11 compute, GPU3 = D3D12 compute. GPU3-only is best X11 config.
+- **Histogram watcher**: Launchers auto-create/restore TempDisable files to force CPU fallback for Develop histogram.
+- **Do NOT use d3d11 proxy**: HWND replacement breaks all rendering. Transparent pass-through only.
+
+See [AGENTS.md](AGENTS.md) for full session knowledge base.
 
 ## Known Issues
 
-- **Import freeze** (Wayland): CEF dialog opens but freezes on folder select — X11 works fine
-- **Gray previews** (Wayland): Filmstrip/Library grid thumbnails are gray — X11 works
-- **Histogram**: Broken on both (D2D1 stub incomplete)
-- **Live preview flicker** (X11): Develop module flickers — use Wayland for Develop
-- **Scrolling ghosting** (Wayland): Minor trailing artifacts
-- **Fullscreen**: May misbehave with fix_createwindow on both
-- **X11 crash**: Rare `X_CopyArea` under XWayland (restart to resolve)
-
-See [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+- **Develop histogram**: DXVK + vkd3d-proton conflict on Pascal. Use CPU mode (both TempDisable files set). The launcher scripts handle this automatically.
+- **Wayland**: Import freezes, previews gray, no histogram.
+- **X11**: Develop flickers. `X_CopyArea` crash under XWayland (rare, restart fixes).
+- **Fullscreen**: May misbehave with `fix_createwindow.dll`.
 
 ## AI Disclosure
 
-This project was developed with assistance from an AI coding agent (opencode). The analysis, patches, and documentation were produced through iterative collaboration between human and AI.
+Developed with assistance from opencode AI coding agent. Analysis, patches, and docs produced through iterative human-AI collaboration.
 
 ## License
 

@@ -2,9 +2,9 @@
 
 ## Requirements
 
-- **Fedora 44+** (or any distro with recent GNOME/Wayland)
-- **NVIDIA GPU** with driver 570+ (tested on 580.159.03)
-- **GE-Proton10-34+** — download from [GE-Proton releases](https://github.com/GloriousEggroll/proton-ge-custom/releases)
+- **Fedora 44+** (any distro with recent GNOME/Wayland)
+- **NVIDIA GPU** with driver 570+ (tested on 580.159.03, GTX 1080 Ti Pascal)
+- **GE-Proton10-34+** — [GE-Proton releases](https://github.com/GloriousEggroll/proton-ge-custom/releases)
 - **Lightroom Classic 13.x** (installed via official Adobe installer)
 - **mingw-w64-gcc** — for building `fix_createwindow.dll`:
   ```bash
@@ -15,22 +15,21 @@
 ## Quick Start
 
 ```bash
-# 1. Clone this repo
+# 1. Clone
 git clone https://github.com/DipCrai/lr-classic-on-linux.git
 cd lr-classic-on-linux
 
-# 2. Apply the winewayland.drv binary patch (required for Wayland)
+# 2. Apply winewayland binary patch (required for Wayland only)
 ./scripts/apply_patch.py
 
-# 3. Download and install CC stub DLLs (required — fix crashes)
-# Get from: https://github.com/sander110419/lightroom-cc-on-linux/tree/main/stubs/binaries
-# Or use the download script:
+# 3. Download and install CC stub DLLs
 ./scripts/download-stubs.sh
-cp stubs/*.dll "/path/to/lightroom/"
 cp stubs/*.dll "$WINEPREFIX/drive_c/windows/system32/"
+cp stubs/*.dll "/path/to/lightroom/"
 
 # 4. Launch!
-./scripts/launch_lightroom.sh
+./scripts/launch_lightroom_x11.sh   # X11 — stable, recommended
+./scripts/launch_lightroom.sh       # Wayland — flicker-free Develop, partial otherwise
 ```
 
 ## Step-by-Step
@@ -38,7 +37,6 @@ cp stubs/*.dll "$WINEPREFIX/drive_c/windows/system32/"
 ### 1. Install GE-Proton
 
 ```bash
-# Download GE-Proton
 wget https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton10-34/GE-Proton10-34.tar.gz
 mkdir -p ~/.steam/root/compatibilitytools.d/
 tar -xzf GE-Proton10-34.tar.gz -C ~/.steam/root/compatibilitytools.d/
@@ -46,38 +44,24 @@ tar -xzf GE-Proton10-34.tar.gz -C ~/.steam/root/compatibilitytools.d/
 
 ### 2. Install Lightroom
 
-Use the official Lightroom Classic installer with the Proton prefix:
-
 ```bash
 export WINEPREFIX=$HOME/.lightroom_prefix/pfx
 export STEAM_COMPAT_DATA_PATH=$HOME/.lightroom_prefix
 export STEAM_COMPAT_CLIENT_INSTALL_PATH=$HOME/.steam/root
 PROTON="$HOME/.steam/root/compatibilitytools.d/Proton-GE Latest/proton"
-
-# Create prefix
 "$PROTON" wineboot -u
-
-# Run installer (adjust path to your installer)
-"$PROTON" run "/path/to/Lightroom_Classic_xxxx_Setup.exe"
+"$PROTON" run "/path/to/Lightroom_Classic_Setup.exe"
 ```
 
 ### 3. Install VC++ Runtimes
 
-Lightroom requires `mfc140u.dll` (Visual C++ 2015-2022). Install via winetricks:
-
 ```bash
-WINEPREFIX=$HOME/.lightroom_prefix/pfx \
-WINE="$PROTON/files/bin/wine64" \
-WINELOADER="$PROTON/files/bin/wine64" \
-WINESERVER="$PROTON/files/bin/wineserver" \
-/path/to/protonfixes/winetricks -q vcrun2022
+WINEPREFIX=$HOME/.lightroom_prefix/pfx winetricks -q vcrun2022
 ```
-
-Or run Lightroom once — if it fails with "mfc140u.dll not found", install it with the command above.
 
 ### 4. Copy CC Stub DLLs
 
-The stub DLLs fix several crashes and missing CLSID errors. Get them from [sander110419/lightroom-cc-on-linux](https://github.com/sander110419/lightroom-cc-on-linux/tree/main/stubs/binaries), or use the download script:
+Get from [sander110419/lightroom-cc-on-linux](https://github.com/sander110419/lightroom-cc-on-linux/tree/main/stubs/binaries) or use `./scripts/download-stubs.sh`:
 
 | DLL | Purpose |
 |-----|---------|
@@ -88,58 +72,43 @@ The stub DLLs fix several crashes and missing CLSID errors. Get them from [sande
 | `hnetcfg.dll` | Firewall rules stub |
 
 ```bash
-# Download stubs from GitHub releases
 ./scripts/download-stubs.sh
-
-# Copy to prefix and Lightroom dir
 cp stubs/*.dll "$WINEPREFIX/drive_c/windows/system32/"
-cp stubs/*.dll "/path/to/lightroom/dir/"
+cp stubs/*.dll "/path/to/lightroom/"
 ```
 
-**Important**: `d2d1.dll` MUST be overridden as native:
+**Important**: `d2d1.dll` must be overridden as native, set in `WINEDLLOVERRIDES`:
 ```
 WINEDLLOVERRIDES="d2d1=n,b;Microsoft.AI.MachineLearning=n,b"
 ```
 
-### 5. Apply winewayland.drv Binary Patch
+### 5. Apply winewayland.drv Binary Patch (Wayland only)
 
-This patch is **required** for Wayland mode. It reorders subsurface creation to avoid a `wl_surface` role conflict that NVIDIA's Wayland driver rejects:
+Required for Wayland mode. Patches winewayland.so to avoid `wl_surface` role conflict:
 
 ```bash
 python3 scripts/apply_patch.py
 ```
 
-**Important**: This binary patch is build-specific (GE-Proton10-34). When updating Proton:
-1. First revert: `bash scripts/revert_patch.sh`
-2. Install new Proton version
-3. Update the offset in `scripts/apply_patch.py` if needed (see `patches/README.md`)
-
-To revert:
-```bash
-bash scripts/revert_patch.sh
-```
+**Build-specific**: GE-Proton10-34 only. When updating Proton:
+1. Revert: `bash scripts/revert_patch.sh`
+2. Install new Proton
+3. Update offsets in `scripts/apply_patch.py`
 
 ### 6. Build & Install fix_createwindow.dll
 
-This DLL converts CEF child windows to popup windows so they render correctly on Wayland:
+Converts CEF child windows to popup windows (required for Wayland import dialog):
 
 ```bash
-# Build
 x86_64-w64-mingw32-gcc -shared -O2 -s -o /tmp/fix_createwindow.dll patches/fix_createwindow.c
-
-# Install to prefix
 cp /tmp/fix_createwindow.dll "$WINEPREFIX/drive_c/windows/system32/"
-
-# Register as AppInit DLL
-"$PROTON/files/bin/wine64" reg add "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /t REG_SZ /d "C:\\windows\\system32\\fix_createwindow.dll" /f
-"$PROTON/files/bin/wine64" reg add "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /t REG_DWORD /d 1 /f
 ```
 
-Or use the helper script: `bash scripts/build-fix_createwindow.sh`
+The launcher scripts handle AppInit registration automatically.
 
 ### 7. Create dxvk.conf
 
-Place this in your Lightroom directory:
+Place in Lightroom directory or set `DXVK_CONF`:
 
 ```ini
 dxgi.deferSurfaceCreation = True
@@ -150,89 +119,100 @@ dxgi.numBackBuffers = 3
 dxgi.syncInterval = 0
 ```
 
-- `maxFeatureLevel = 11_0` is **required** (10_0 causes a white import window)
-- `syncInterval = 0` prevents stuttering
+- `maxFeatureLevel = 11_0` — **required** (10_0 causes white import window)
+- `syncInterval = 0` — prevents stuttering
 
 ### 8. Launch
 
-#### Wayland (recommended — flicker-free)
-
-```bash
-./scripts/launch_lightroom.sh
-```
-
-The script expects `Lightroom.exe` in the parent of the repo root by default (adjust `LR_DIR` or `LR_EXE` as needed). Override via environment variables:
-
-```bash
-LR_DIR=/path/to/lightroom WINEPREFIX=~/.custom_prefix/pfx MONITOR=DP-1 ./scripts/launch_lightroom.sh
-```
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `WINEPREFIX` | `~/.lightroom_prefix/pfx` | Wine prefix location |
-| `PROTON_DIR` | `~/.steam/root/compatibilitytools.d/Proton-GE Latest` | Proton installation |
-| `LR_EXE` | `<repo_parent>/Lightroom.exe` | Lightroom executable |
-| `MONITOR` | `HDMI-A-1` | Wayland monitor name |
-| `DXVK_CONF` | `<LR_DIR>/dxvk.conf` | DXVK config path |
-
-#### X11 (use for import dialog & previews)
+#### X11 (recommended — stable)
 
 ```bash
 ./scripts/launch_lightroom_x11.sh
 ```
 
-X11 handles import dialog and image previews correctly (unlike Wayland). The Develop module live preview may flicker on NVIDIA driver 580.159.03 — a driver bug with no known fix. The `X_CopyArea` crash under XWayland is rare; restart usually resolves it.
+Features: Import ✅, Previews ✅, Library histogram ✅ (D3D11 GPU), Develop ⚠️ (flickers).
 
-For an ideal setup, use **Wayland** for Develop module work and **X11** for import/preview tasks.
+**GPU3-only config is default**: The launcher sets TempDisableGPU3 (D3D12 off), keeping D3D11 GPU for everything. For Develop histogram (blank on Pascal due to DXVK/vkd3d-proton conflict), use CPU fallback — the launcher has a background watcher that creates TempDisableGPU2+3 files.
 
-### 9. Post-Launch Checks
+#### Wayland (flicker-free Develop)
 
-After Lightroom starts:
+```bash
+./scripts/launch_lightroom.sh
+```
 
-1. **Import dialog**: Opens and CEF content is visible (with `fix_createwindow.dll`). However, **selecting a folder causes the app to freeze** (known bug, unresolved). Thumbnails may or may not be visible.
-2. **Previews**: UNTESTED — may still be gray/invisible even with the binary patch. The subsurface reorder is a necessary foundation but not yet verified.
-3. **Histogram**: Known broken (D2D1 rendering — patched stub doesn't implement all effects).
-4. **Develop module**: Workable on X11 (but flickers). On Wayland, mostly untested until previews are confirmed working.
+Features: Main window ✅, Develop ✅ (no flicker), Import ❌ (freeze), Previews ❌ (gray), Histo ❌.
+
+#### Configuration Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WINEPREFIX` | `~/.lightroom_prefix/pfx` | Wine prefix |
+| `PROTON_DIR` | `~/.steam/root/.../Proton-GE Latest` | Proton installation |
+| `LR_EXE` | `<repo_parent>/Lightroom.exe` | Lightroom executable |
+| `MONITOR` | `HDMI-A-1` | Wayland monitor name |
+| `DXVK_CONF` | `<LR_DIR>/dxvk.conf` | DXVK config path |
+| `LOG_DIR` | `/tmp/proton_logs` | Log output directory |
+
+### 9. Histogram: GPU Config Details
+
+CameraRaw creates TempDisable files in:
+```
+~/.lightroom_prefix/pfx/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw/GPU/Adobe Photoshop Lightroom Classic/
+```
+
+| File | Effect |
+|------|--------|
+| `TempDisableGPU2` | D3D11 compute OFF |
+| `TempDisableGPU3` | D3D12 compute OFF |
+| Neither (default) | Both GPU compute ON — **broken** (DXVK + vkd3d-proton conflict) |
+| `TempDisableGPU3` only | ✅ Best config — D3D11 GPU works, D3D12 off |
+| `TempDisableGPU2+3` | ✅ CPU fallback — everything works but slower |
+
+**Launcher scripts** create `TempDisableGPU2+3` and run a background watcher that recreates them if CameraRaw deletes them. The GPU3-only config must be set manually (remove/comment the watcher lines).
 
 ## Troubleshooting
 
 ### "mfc140u.dll not found"
 
-VC++ runtime not installed. Run winetricks to install:
 ```bash
 WINEPREFIX=$HOME/.lightroom_prefix/pfx winetricks -q vcrun2022
 ```
 
 ### Lightroom exits immediately (exit code 53)
 
-DLL not found error. Run with `WINEDEBUG=+loaddll` to see which DLL is missing, then install the appropriate runtime.
+Run with `WINEDEBUG=+loaddll` to find missing DLL.
 
 ### "ProtonFixes: Skipping fix execution"
 
-Set `SteamAppId=480` or run via Steam. This is cosmetic — Lightroom should still work.
+Set `SteamAppId=480` or run via Steam. Cosmetic.
 
-### Import dialog is white/frozen
+### Import dialog white/frozen
 
-1. Check `CHROMIUM_FLAGS` — must have `--in-process-gpu`, must NOT have `--disable-gpu`
-2. Check `fix_createwindow.dll` is registered in AppInit_DLLs
+1. Check `CHROMIUM_FLAGS` — `--in-process-gpu`, NOT `--disable-gpu`
+2. Check `fix_createwindow.dll` registered in AppInit_DLLs
 3. Check `d3d11.maxFeatureLevel = 11_0` in dxvk.conf
-4. Rebuild fix_createwindow.dll from `patches/fix_createwindow.c`
+4. X11 import works ✅; Wayland import freezes on folder select ❌
 
 ### Flickering on X11
 
-Switch to Wayland. This is a known NVIDIA driver bug with no fix.
+Switch to Wayland for Develop module work. This is a known NVIDIA driver bug.
+
+### Develop histogram blank
+
+Known limitation: DXVK + vkd3d-proton conflict on Pascal. The launcher creates TempDisableGPU2+3 for CPU fallback. If you need GPU-accelerated histogram, use GPU3-only config (D3D11 GPU), but Develop histogram stays blank.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `scripts/launch_lightroom.sh` | Wayland launcher (daily driver) |
-| `scripts/launch_lightroom_x11.sh` | X11 launcher (reference only) |
+| `scripts/launch_lightroom.sh` | Wayland launcher |
+| `scripts/launch_lightroom_x11.sh` | X11 launcher (recommended) |
 | `scripts/apply_patch.py` | Binary patch for winewayland.so |
-| `scripts/revert_patch.sh` | Revert the binary patch |
-| `scripts/build-fix_createwindow.sh` | Build fix_createwindow.dll |
-| `patches/fix_createwindow.c` | Source for CEF child→popup conversion |
-| `patches/libwl_got_patch.c` | LD_PRELOAD alternative (for reference) |
-| `patches/README.md` | Patch documentation |
+| `scripts/revert_patch.sh` | Revert binary patch |
+| `scripts/download-stubs.sh` | Download CC stub DLLs |
+| `patches/fix_createwindow.c` | CEF child→popup conversion DLL |
+| `patches/wine/0001-*.patch` | Wine d3d11 CreateDirect3D11DeviceFromDXGIDevice |
+| `patches/wine/0002-*.patch` | Wine winewayland subsurface reorder |
 | `dxvk.conf` | DXVK configuration |
 | `docs/ROOT_CAUSE.md` | Root cause analysis |
+| `AGENTS.md` | AI session knowledge base |
