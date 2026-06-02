@@ -38,11 +38,17 @@ On Wayland, the import dialog opens and CEF content is visible. Selecting a fold
 
 On Wayland, the main image and Develop module render correctly, but small previews are gray. The binary patch (subsurface reorder) avoids the hang but child window wl_surfaces still get conflicting roles — subsurface + VkSurface on the same wl_surface. Fix requires separate wl_surfaces per HWND (Wine source change in winewayland.drv).
 
-## 4. Library Histogram (Wayland)
+## 4. Library Histogram
 
-**Status**: ❌ Wayland: broken. ✅ X11: works (GPU3-only config).
+**Status**: ✅ X11: works (GPU pref trick). ❌ Wayland: broken.
 
-Wayland's wl_surface role conflict affects all D3D11 swapchains, including the histogram render target. X11 with GPU3-only config works because D3D12 is disabled and D3D11 compute runs via DXVK.
+**Root cause**: CameraRaw's GPU probe during startup fails (deadlock/black screen). Library histogram rendering via D2D1 requires CameraRaw GPU to be initialized.
+
+**GPU Pref Trick fix**: Launch with `GPUManagerPref = "off"` in Lightroom preferences → CameraRaw skips the broken startup probe. When user enables GPU in Preferences, CameraRaw re-initializes via the working code path → histogram renders. The launcher handles this automatically via `gpu_pref_patcher.py off`.
+
+Wayland: GPU trick fixes histogram ✅ but import still freezes ❌ and previews still gray ❌.
+
+**Previous (incorrect) understanding**: Was thought to be a D2D1 stub issue (patched d2d1.dll). Actually, the d2d1 stub works fine — GPU just wasn't initializing.
 
 ## 5. Live Preview Flicker (X11)
 
@@ -75,6 +81,6 @@ XWayland GLAMOR bug (#1317) triggered by child window compositing. Restart resol
 | Develop histogram | ❌ (blank) | ❌ |
 | Import dialog | ✅ | ❌ (freeze) |
 | Previews | ✅ | ❌ (gray) |
-| Library histogram | ✅ (GPU3-only) | ❌ |
+| Library histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |
 | Develop module | ⚠️ (flicker) | ✅ |
 | Fullscreen | ⚠️ | ⚠️ |

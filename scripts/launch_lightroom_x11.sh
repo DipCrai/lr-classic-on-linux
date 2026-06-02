@@ -16,6 +16,7 @@ STEAM_COMPAT_CLIENT_INSTALL_PATH="${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$HOME/.ste
 PROTON_DIR="${PROTON_DIR:-$STEAM_COMPAT_CLIENT_INSTALL_PATH/compatibilitytools.d/Proton-GE Latest}"
 LR_EXE="${LR_EXE:-$LR_DIR/Lightroom.exe}"
 DXVK_CONF="${DXVK_CONF:-$LR_DIR/dxvk.conf}"
+SCRIPTS_DIR="$(dirname "$0")"
 LOG_DIR="${LOG_DIR:-/tmp/proton_logs}"
 
 # Validate Lightroom executable exists
@@ -68,24 +69,12 @@ if [ -f /tmp/fix_createwindow.dll ]; then
     "$PROTON_DIR/files/bin/wine64" reg add "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /t REG_DWORD /d 1 /f 2>/dev/null
 fi
 
-# ========== Fix 3: Histogram (TempDisable GPU2+3 — CPU fallback) ==========
-GPU_DIR="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw/GPU/Adobe Photoshop Lightroom Classic"
-mkdir -p "$GPU_DIR" 2>/dev/null
-touch "$GPU_DIR/TempDisableGPU2" "$GPU_DIR/TempDisableGPU3"
-
-# Background watcher — recreates TempDisable files if CameraRaw deletes them
-WATCHER_PID=""
-camera_raw_watcher() {
-    local dir="$1"
-    while true; do
-        for f in TempDisableGPU2 TempDisableGPU3; do
-            [ ! -f "$dir/$f" ] && touch "$dir/$f"
-        done
-        sleep 3
-    done
-}
-camera_raw_watcher "$GPU_DIR" &
-WATCHER_PID=$!
+# ========== GPU Fix: Pref Patching ==========
+# Workaround: start with GPU=OFF in Lightroom preferences (avoids broken
+# CameraRaw startup probe). User enables GPU in Preferences → CameraRaw
+# re-initializes via the working probe path.
+python3 "$SCRIPTS_DIR/gpu_pref_patcher.py" off
+echo "[GPU] GPU set to OFF in preferences (toggle ON in Lightroom settings for full acceleration)"
 
 # ========== Logs ==========
 export PROTON_LOG=1
@@ -109,9 +98,6 @@ WINEDLLOVERRIDES="$WINEDLLOVERRIDES" \
 echo "Exit: $?"
 
 # ========== Cleanup ==========
-# Kill background watcher
-[ -n "$WATCHER_PID" ] && kill "$WATCHER_PID" 2>/dev/null
-
 # Cleanup AppInit
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /f 2>/dev/null
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /f 2>/dev/null

@@ -56,27 +56,10 @@ if [ -f /tmp/fix_createwindow.dll ]; then
     echo "  ✓ AppInit DLL registered"
 fi
 
-# ========== FIX 3: Histogram (TempDisable GPU2+3 — CPU fallback) ==========
-echo "=== Fix 3: Histogram (CPU fallback via TempDisable) ==="
-GPU_DIR="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw/GPU/Adobe Photoshop Lightroom Classic"
-mkdir -p "$GPU_DIR" 2>/dev/null
-touch "$GPU_DIR/TempDisableGPU2" "$GPU_DIR/TempDisableGPU3"
-echo "  ✓ TempDisableGPU2+3 created (D3D11+D3D12 compute disabled, CPU fallback)"
-
-# Background watcher — recreates TempDisable files if CameraRaw deletes them
-WATCHER_PID=""
-camera_raw_watcher() {
-    local dir="$1"
-    while true; do
-        for f in TempDisableGPU2 TempDisableGPU3; do
-            [ ! -f "$dir/$f" ] && touch "$dir/$f"
-        done
-        sleep 3
-    done
-}
-camera_raw_watcher "$GPU_DIR" &
-WATCHER_PID=$!
-echo "  ✓ Histogram watcher started (PID $WATCHER_PID)"
+# ========== FIX 3: GPU Fix (Pref Patching) ==========
+echo "=== Fix 3: GPU pref patching (CameraRaw startup probe workaround) ==="
+python3 "$SCRIPTS_DIR/gpu_pref_patcher.py" off
+echo "  ✓ GPU set to OFF in preferences (toggle ON in Lightroom for acceleration)"
 
 # ========== ENVIRONMENT ==========
 export PROTON_ENABLE_WAYLAND=1
@@ -113,9 +96,6 @@ echo "Lightroom exited with code $LR_EXIT"
 
 # ========== CLEANUP ==========
 echo "=== Cleanup ==="
-# Kill background watcher
-[ -n "$WATCHER_PID" ] && kill "$WATCHER_PID" 2>/dev/null && echo "  ✓ Watcher stopped"
-
 # Remove AppInit registry entries
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /f 2>/dev/null
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /f 2>/dev/null

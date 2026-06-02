@@ -130,9 +130,9 @@ dxgi.syncInterval = 0
 ./scripts/launch_lightroom_x11.sh
 ```
 
-Features: Import ✅, Previews ✅, Library histogram ✅ (D3D11 GPU), Develop ⚠️ (flickers).
+Features: Import ✅, Previews ✅, Library histogram ✅, Develop ⚠️ (flickers).
 
-**GPU3-only config is default**: The launcher sets TempDisableGPU3 (D3D12 off), keeping D3D11 GPU for everything. For Develop histogram (blank on Pascal due to DXVK/vkd3d-proton conflict), use CPU fallback — the launcher has a background watcher that creates TempDisableGPU2+3 files.
+**GPU Pref Trick enabled by default**: The launcher runs `gpu_pref_patcher.py off` before starting Lightroom. This sets `GPUManagerPref = "off"` in Lightroom preferences, causing CameraRaw to skip its broken startup GPU probe. After Lightroom is fully loaded, go to **Preferences → Performance** and enable GPU acceleration — CameraRaw re-initializes via a working code path.
 
 #### Wayland (flicker-free Develop)
 
@@ -153,22 +153,34 @@ Features: Main window ✅, Develop ✅ (no flicker), Import ❌ (freeze), Previe
 | `DXVK_CONF` | `<LR_DIR>/dxvk.conf` | DXVK config path |
 | `LOG_DIR` | `/tmp/proton_logs` | Log output directory |
 
-### 9. Histogram: GPU Config Details
+### 9. GPU Pref Trick (CameraRaw Startup Probe)
 
-CameraRaw creates TempDisable files in:
+Lightroom's CameraRaw module does a GPU probe at startup using a code path that fails on Wine/Proton. This causes import freezes, gray previews, and broken histogram.
+
+**Workaround**: Launch Lightroom with GPU disabled in preferences, then enable it after startup:
+
+```bash
+# Before launch: set GPU to OFF
+python3 scripts/gpu_pref_patcher.py off
+
+# Launch Lightroom
+./scripts/launch_lightroom_x11.sh
+
+# After Lightroom is fully loaded: go to Preferences → Performance → enable GPU
 ```
-~/.lightroom_prefix/pfx/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw/GPU/Adobe Photoshop Lightroom Classic/
+
+The launcher scripts handle the `gpu_pref_patcher.py off` call automatically. After Lightroom starts, toggle GPU ON in Preferences → Performance.
+
+The patcher modifies `Lightroom Classic CC 7 Preferences.agprefs` in the Wine prefix:
+```
+WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/Lightroom/Preferences/
 ```
 
-| File | Effect |
-|------|--------|
-| `TempDisableGPU2` | D3D11 compute OFF |
-| `TempDisableGPU3` | D3D12 compute OFF |
-| Neither (default) | Both GPU compute ON — **broken** (DXVK + vkd3d-proton conflict) |
-| `TempDisableGPU3` only | ✅ Best config — D3D11 GPU works, D3D12 off |
-| `TempDisableGPU2+3` | ✅ CPU fallback — everything works but slower |
+Key preference changed: `GPUManagerPref = "off"` → skip CameraRaw GPU probe at startup.
 
-**Launcher scripts** create `TempDisableGPU2+3` and run a background watcher that recreates them if CameraRaw deletes them. The GPU3-only config must be set manually (remove/comment the watcher lines).
+### 10. Develop Histogram: DXVK + vkd3d-proton conflict
+
+The Develop histogram is a separate issue — it remains blank on Pascal GPUs due to an in-process conflict between DXVK and vkd3d-proton when both are active. No known fix. CPU fallback only.
 
 ## Troubleshooting
 

@@ -9,11 +9,11 @@ Fixes and analysis for running **Adobe Lightroom Classic** on Linux via **Wine/P
 | Main window | ✅ | ✅ (patch required) |
 | Import dialog | ✅ | ❌ (freezes on folder select) |
 | Image previews | ✅ | ❌ (gray) |
-| Library histogram | ✅ (D3D11 GPU) | ❌ |
+| Library histogram | ✅ (D3D11 GPU via GPU pref trick) | ✅ (GPU pref trick) |
 | Develop module | ⚠️ (live preview flickers) | ✅ |
 | Develop histogram | ❌ (DXVK/vkd3d-proton conflict) | ❌ |
 
-**Best X11 config**: TempDisableGPU3 only — D3D11 GPU for everything except Develop histogram (CPU fallback when needed).
+**GPU Pref Trick**: Launch with `GPUManagerPref = "off"` in Lightroom preferences — CameraRaw skips its broken startup GPU probe. Enable GPU in Lightroom settings → CameraRaw re-initializes via working code path. Import, previews, and library histogram all work on X11 with this trick.
 
 **Root cause confirmed**: DXVK + vkd3d-proton corrupt each other when both active in the same process. Confirmed on both NVIDIA (580.159.03) AND software Vulkan (llvmpipe/LVP) — in-process software conflict, not a driver bug.
 
@@ -61,19 +61,19 @@ Full setup: [GUIDE.md](GUIDE.md)
 
 ## Key Findings
 
+- **GPU Pref Trick**: Start Lightroom with GPU=OFF in preferences. The launcher runs `gpu_pref_patcher.py off` before launch. CameraRaw startup GPU probe is broken; starting with GPU disabled skips it. Enabling GPU in Preferences triggers a working re-init path.
 - **CreateDirect3D11DeviceFromDXGIDevice**: CameraRaw delay-imports this from d3d11.dll — not exported by DXVK or upstream Wine. Wine source patch at `patches/wine/0001-*`.
 - **GPU2 vs GPU3**: GPU2 = D3D11 compute, GPU3 = D3D12 compute. GPU3-only is best X11 config.
-- **Histogram watcher**: Launchers auto-create/restore TempDisable files to force CPU fallback for Develop histogram.
 - **Do NOT use d3d11 proxy**: HWND replacement breaks all rendering. Transparent pass-through only.
 
 See [AGENTS.md](AGENTS.md) for full session knowledge base.
 
 ## Known Issues
 
-- **Develop histogram**: DXVK + vkd3d-proton conflict on Pascal. Use CPU mode (both TempDisable files set). The launcher scripts handle this automatically.
-- **Wayland**: Import freezes, previews gray, no histogram.
+- **Develop histogram**: DXVK + vkd3d-proton conflict on Pascal. No known fix — CPU fallback only.
+- **Wayland**: Import freezes, previews gray (even with GPU trick — only histogram is fixed).
 - **X11**: Develop flickers. `X_CopyArea` crash under XWayland (rare, restart fixes).
-- **Fullscreen**: May misbehave with `fix_createwindow.dll`.
+- **GPU toggle manual step**: After each launch, go to Preferences → Performance and toggle GPU ON. Workaround in development.
 
 ## AI Disclosure
 
