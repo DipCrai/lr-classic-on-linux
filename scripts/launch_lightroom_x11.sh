@@ -38,8 +38,9 @@ unset PROTON_WAYLAND_MONITOR
 unset GBM_BACKEND
 export DISPLAY="${DISPLAY:-:0}"
 
-# NVIDIA
-export __GLX_VENDOR_LIBRARY_NAME=nvidia
+if nvidia-smi &>/dev/null; then
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+fi
 
 # DXVK
 export DXVK_CONFIG_FILE="$DXVK_CONF"
