@@ -2,7 +2,7 @@
 
 ## 1. Develop Histogram (X11)
 
-**Status**: ✅ FIXED on X11 with GPU pref trick. ❌ Wayland: broken (no GPU compute on Wayland without TempDisable).
+**Status**: ✅ FIXED on X11 with GPU pref trick. ✅ Wayland: works with GPU pref trick (same fix).
 
 **Root cause**: The Develop histogram blank was NOT a DXVK/vkd3d-proton conflict. The real root cause was CameraRaw's GPU probe failing at startup, corrupting GPU compute state. The TempDisable experiments were testing different states of a broken GPU initialization, not a conflict between backends.
 
@@ -33,7 +33,7 @@ On Wayland, the main image and Develop module render correctly, but small previe
 
 ## 4. Library Histogram
 
-**Status**: ✅ X11: works (GPU pref trick). ❌ Wayland: broken.
+**Status**: ✅ X11: works (GPU pref trick). ✅ Wayland: works (GPU pref trick).
 
 **Root cause**: CameraRaw's GPU probe during startup fails (deadlock/black screen). Library histogram rendering via D2D1 requires CameraRaw GPU to be initialized.
 
