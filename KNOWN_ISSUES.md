@@ -67,6 +67,18 @@ WS_POPUP windows created by `fix_createwindow.dll` may not position correctly in
 
 XWayland GLAMOR bug (#1317) triggered by child window compositing. Restart resolves it.
 
+## 9. AI Masks (Select Subject/Sky) — Not Downloading / Not Applying
+
+**Status**: ❌ Shows "downloading models" at 0% and never completes; models do not apply.
+
+**Root cause**: CameraRaw's `Microsoft.AI.MachineLearning.dll` requires DirectML (D3D12) GPU compute via vkd3d-proton. On Pascal GPUs (and likely others), the DirectML device creation or model inference hangs — likely a vkd3d-proton compute issue.
+
+The model files themselves *are* present in `Resources/ModelZoo/` and registered in `CloudDownload/Index.dat`, but CameraRaw cannot initialize the ML runtime successfully.
+
+**Workaround**: None. Same behavior as on CC version of Lightroom under Wine/Proton. Stubbing `Microsoft.AI.MachineLearning.dll` prevents the hang but disables AI features completely.
+
+**Prognosis**: Needs vkd3d-proton improvements for DirectML compute, or Adobe switching to a different ML backend (e.g. CPU-based ONNX).
+
 ## Summary Table
 
 | Issue | X11 | Wayland |
@@ -77,3 +89,4 @@ XWayland GLAMOR bug (#1317) triggered by child window compositing. Restart resol
 | Library histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |
 | Develop module | ⚠️ (flicker) | ✅ |
 | Fullscreen | ⚠️ | ⚠️ |
+| AI masks (Select Subject/Sky) | ❌ (0% download / not applying) | ❌ |
