@@ -1,5 +1,5 @@
 #!/bin/bash
-# Lightroom Classic on Linux — ALL FIXES merged launcher (Wayland)
+# Lightroom Classic on Linux — Wayland launcher (GPU pref trick makes histogram work)
 # Source: https://github.com/DipCrai/lr-classic-on-linux
 set -o pipefail
 

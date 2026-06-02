@@ -10,7 +10,7 @@ Fixes and analysis for running **Adobe Lightroom Classic** on Linux via **Wine/P
 | Import dialog | ✅ | ❌ (freezes on folder select) |
 | Image previews | ✅ | ❌ (gray) |
 | Library histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |
-| Develop histogram | ✅ (GPU pref trick) | ❌ |
+| Develop histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |
 | Develop module | ⚠️ (live preview flickers) | ✅ |
 
 **GPU Pref Trick**: Launch with `GPUManagerPref = "off"` in Lightroom preferences — CameraRaw skips its broken startup GPU probe. Enable GPU in Lightroom settings → CameraRaw re-initializes via working code path. Everything works on X11 with this trick (import, previews, all histograms). Only Develop module flickering on X11 remains.

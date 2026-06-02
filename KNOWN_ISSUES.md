@@ -10,7 +10,7 @@
 
 **Previous (incorrect) analysis**: Extensive testing showed different TempDisable combinations giving different results, which was interpreted as DXVK/vkd3d-proton conflict. In reality, CameraRaw's GPU probe was failing nondeterministically depending on timing and pre-existing TempDisable state. The "GPU2-only → Develop histogram works" result was actually CameraRaw initializing in a degraded state that happened to leave D3D12 compute accessible.
 
-**Wayland**: Develop histogram requires GPU compute, which requires the GPU pref trick. On Wayland, even with GPU ON in prefs, import and previews are still broken by the wl_surface role conflict, so the histogram context is moot.
+**Wayland**: Develop histogram works with the GPU pref trick (same as X11). Library histogram also works. Only import ❌ and previews ❌ remain broken due to wl_surface role conflict.
 
 ## 2. CEF Import Dialog — Folder Select Freeze (Wayland)
 
@@ -71,7 +71,7 @@ XWayland GLAMOR bug (#1317) triggered by child window compositing. Restart resol
 
 | Issue | X11 | Wayland |
 |-------|-----|---------|
-| Develop histogram | ✅ (GPU pref trick) | ❌ |
+| Develop histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |
 | Import dialog | ✅ | ❌ (freeze) |
 | Previews | ✅ | ❌ (gray) |
 | Library histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |

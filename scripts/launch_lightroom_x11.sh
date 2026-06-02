@@ -1,6 +1,6 @@
 #!/bin/bash
 # Lightroom Classic on Linux — X11 launcher (RECOMMENDED)
-# X11 is the recommended mode: Import ✅, Previews ✅, Library histogram ✅.
+# X11 is the recommended mode: Import ✅, Previews ✅, Library histogram ✅, Develop histogram ✅.
 # Develop live preview flickers on NVIDIA 580.159.03 — use Wayland for Develop.
 # Source: https://github.com/DipCrai/lr-classic-on-linux
 set -o pipefail

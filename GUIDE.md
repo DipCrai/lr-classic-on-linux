@@ -140,7 +140,7 @@ Features: Import ✅, Previews ✅, Library histogram ✅, Develop histogram ✅
 ./scripts/launch_lightroom.sh
 ```
 
-Features: Main window ✅, Develop ✅ (no flicker), Import ❌ (freeze), Previews ❌ (gray), Histo ❌.
+Features: Main window ✅, Develop ✅ (no flicker), Library histogram ✅, Develop histogram ✅, Import ❌ (freeze), Previews ❌ (gray).
 
 #### Configuration Variables
 
@@ -182,7 +182,7 @@ Key preference changed: `GPUManagerPref = "off"` → skip CameraRaw GPU probe at
 
 The Develop histogram was previously thought to be a DXVK/vkd3d-proton conflict on Pascal GPUs. This was incorrect — it was CameraRaw's failed GPU probe corrupting compute state. With the GPU pref trick (`GPUManagerPref = "off"` at launch, toggle ON after startup), CameraRaw initializes cleanly and the Develop histogram works on X11.
 
-**Wayland**: Develop histogram requires GPU compute, which requires the GPU pref trick. On Wayland, even with GPU ON, import and previews are still broken by the wl_surface role conflict.
+**Wayland**: Develop histogram works with the GPU pref trick (same as X11). Library histogram also works. Import ❌ and previews ❌ are the only remaining Wayland issues.
 
 ## Troubleshooting
 
