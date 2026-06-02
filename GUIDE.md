@@ -220,9 +220,7 @@ Switch to Wayland for Develop module work. This is a known NVIDIA driver bug.
 
 ### Develop histogram blank
 
-On X11: Make sure you toggled GPU ON in Preferences → Performance after launching. The launcher starts Lightroom with GPU=OFF; you must enable it in the UI.
-
-On Wayland: Develop histogram is broken due to wl_surface role conflict (no GPU compute on Wayland via DXVK).
+On both Wayland and X11: Make sure you toggled GPU ON in Preferences → Performance after launching. The launcher starts Lightroom with GPU=OFF; you must enable it in the UI.
 
 ## Files
 
