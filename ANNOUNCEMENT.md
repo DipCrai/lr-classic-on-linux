@@ -4,9 +4,9 @@
 1. **wl_surface role conflict** (VkSurface + wl_subsurface) → gray previews on Wayland
 2. **CEF child windows** → white/frozen import dialog on Wayland
 3. **X11 flickering** → NVIDIA 580.159.03 bypasses vsync on X11
-4. **DXVK + vkd3d-proton conflict** → Develop histogram blank on Pascal (confirmed in-process bug)
+4. **CameraRaw GPU probe fails at startup** → corrupts GPU compute state (Develop histogram, Library histogram, previews)
 
-**Current recommendation**: Use **X11** with GPU3-only config (TempDisableGPU3) for a stable workflow. Use Wayland for flicker-free Develop module work.
+**Current recommendation**: Use **X11** with the **GPU pref trick** (start with GPU=OFF, toggle ON after launch). Everything works — import ✅, previews ✅, all histograms ✅. Only Develop module flickers slightly on X11. Use Wayland for flicker-free Develop work.
 
 ---
 
@@ -51,15 +51,13 @@ NVIDIA driver 580.159.03 bypasses both Vulkan Present and GLX Present vsync. Thi
 
 ---
 
-## Issue 3: Develop Histogram — DXVK + vkd3d-proton Conflict (Pascal)
+## Issue 3: Develop Histogram — CameraRaw GPU Probe Failure
 
-**Root cause confirmed**: DXVK (Vulkan D3D11) and vkd3d-proton (Vulkan D3D12) corrupt each other when both active in the same process. Confirmed on both NVIDIA Pascal and software Vulkan (llvmpipe/LVP) — not a GPU driver bug.
+**Root cause (corrected)**: The DXVK/vkd3d-proton conflict theory was **incorrect**. The real root cause of the blank Develop histogram (and ALL other broken features on X11) is CameraRaw's GPU probe failing at startup. When CameraRaw initializes, it attempts a GPU probe via a broken code path under Wine/Proton. This corrupts GPU compute state, causing blank histograms, gray previews, and import freezes.
 
-**Impact**: The histogram needs both D3D11 (Library) and D3D12 (Develop) GPU compute. They cannot coexist. GPU3-only (D3D12 off) gives a working D3D11 GPU for everything except Develop histogram, which falls back to CPU.
+**Fix — GPU Pref Trick**: Launch Lightroom with `GPUManagerPref = "off"` in preferences → CameraRaw skips its broken startup GPU probe entirely. After Lightroom is fully loaded, enable GPU in Preferences → Performance → CameraRaw re-initializes via a **working** code path. Both D3D11 and D3D12 compute backends work correctly after this re-init.
 
-**No known fix**. Upstream DXVK/vkd3d-proton investigation needed.
-
-**Workaround**: Launcher scripts automatically create TempDisableGPU2+3 for CPU fallback. For GPU acceleration, remove TempDisableGPU3 (keep only TempDisableGPU2 or neither — but both active corrupts).
+**Status**: ✅ Develop histogram works on both X11 and Wayland with the GPU pref trick.
 
 ---
 
@@ -67,17 +65,16 @@ NVIDIA driver 580.159.03 bypasses both Vulkan Present and GLX Present vsync. Thi
 
 | Mode | Import | Previews | Library Histo | Develop Histo | Develop | Speed |
 |------|--------|----------|---------------|---------------|---------|-------|
-| **X11 GPU3-only** 🏆 | ✅ | ✅ | ✅ (GPU) | ❌ (CPU) | ⚠️ flicker | Fast |
-| X11 CPU fallback | ✅ | ✅ | ✅ (CPU) | ✅ (CPU) | ⚠️ flicker | Slow |
-| Wayland GPU3 | ❌ freeze | ❌ gray | ❌ | ❌ | ✅ smooth | Medium |
+| **X11 (GPU pref trick)** 🏆 | ✅ | ✅ | ✅ (GPU) | ✅ (GPU) | ⚠️ flicker | Fast |
+| Wayland (GPU pref trick) | ❌ freeze | ❌ gray | ✅ (GPU) | ✅ (GPU) | ✅ smooth | Medium |
 
-**Default launcher behavior**: Creates TempDisableGPU2+3 (CPU fallback) with a background watcher that restores them if CameraRaw deletes them. This is safest but slowest. Adjust by removing/commenting the watcher section in the launcher script.
+**Launcher behavior**: Runs `gpu_pref_patcher.py off` before launch to set GPU=OFF in preferences. After Lightroom loads, the user enables GPU in Preferences → Performance.
 
 ---
 
 ## System
 
-- Fedora 44, GNOME 50.1, NVIDIA GTX 1080 Ti (Pascal, driver 580.159.03)
+- Fedora 44 (GNOME 50.1), Arch Linux (Hyprland + Caelestia)
 - Proton: GE-Proton10-34
 - Lightroom Classic 13.x
 
@@ -107,5 +104,3 @@ Developed with assistance from opencode AI coding agent.
 ## Submit to:
 1. **WineHQ Bugzilla** — winewayland.drv component
 2. **GE-Proton GitHub** — https://github.com/GloriousEggroll/proton-ge-custom/issues
-3. **DXVK GitHub** — D3D11 + D3D12 in-process conflict
-4. **vkd3d-proton GitHub** — Pascal D3D12 compute

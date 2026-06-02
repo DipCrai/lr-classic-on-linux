@@ -45,7 +45,7 @@ Full setup: [GUIDE.md](GUIDE.md)
 |-------|------------|--------|
 | Gray previews (Wayland) | Same `wl_surface` gets both `wl_subsurface` + `VkSurfaceKHR` roles — role conflict | ⚠️ Binary patch avoids hang but gray persists |
 | Import freeze (Wayland) | CEF folder select deadlock | ❌ Unresolved |
-| Develop histogram blank | DXVK + vkd3d-proton in-process conflict on Pascal | ❌ Use CPU (TempDisableGPU2+3) |
+| Develop histogram blank | CameraRaw GPU probe fails at startup — corrupts GPU compute state | ✅ Fixed by GPU pref trick (start with GPU=off, toggle on after launch) |
 | X11 flickering | NVIDIA 580.159.03 driver bypasses vsync | ❌ Use Wayland for Develop |
 | Library histogram ✅ | D3D11 compute via DXVK works | ✅ GPU3-only config |
 
@@ -70,7 +70,7 @@ Full setup: [GUIDE.md](GUIDE.md)
 
 - **Wayland**: Import freezes, previews gray (even with GPU trick — only histogram is fixed).
 - **X11**: Develop flickers. `X_CopyArea` crash under XWayland (rare, restart fixes).
-- **GPU toggle manual step**: After each launch, go to Preferences → Performance and toggle GPU ON. Workaround in development.
+- **GPU toggle manual step**: After each launch, go to Preferences → Performance and toggle GPU ON.
 
 ## AI Disclosure
 

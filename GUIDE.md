@@ -8,6 +8,7 @@
   ```bash
   sudo dnf install mingw64-gcc        # Fedora
   sudo apt install mingw-w64          # Debian/Ubuntu
+  sudo pacman -S mingw-w64-gcc        # Arch
   ```
 
 ## Tested On
@@ -155,7 +156,7 @@ Features: Main window ✅, Develop ✅ (no flicker), Library histogram ✅, Deve
 |----------|---------|-------------|
 | `WINEPREFIX` | `~/.lightroom_prefix/pfx` | Wine prefix |
 | `PROTON_DIR` | `~/.steam/root/.../Proton-GE Latest` | Proton installation |
-| `LR_EXE` | `<repo_parent>/Lightroom.exe` | Lightroom executable |
+| `LR_EXE` | `<repo_root>/Lightroom.exe` | Lightroom executable |
 | `MONITOR` | `HDMI-A-1` | Wayland monitor name |
 | `DXVK_CONF` | `<LR_DIR>/dxvk.conf` | DXVK config path |
 | `LOG_DIR` | `/tmp/proton_logs` | Log output directory |

@@ -6,9 +6,8 @@
 set -o pipefail
 
 # ========== CONFIGURATION ==========
-# NOTE: LR_DIR defaults to repo root. For a real setup, either:
-#   a) Place this repo inside your Lightroom directory, or
-#   b) Set LR_DIR/LR_EXE to your Lightroom path
+# NOTE: LR_DIR defaults to repo root, LR_EXE defaults to LR_DIR/Lightroom.exe.
+# Override LR_DIR or LR_EXE if Lightroom.exe is elsewhere:
 LR_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 WINEPREFIX="${WINEPREFIX:-$HOME/.lightroom_prefix/pfx}"
 STEAM_COMPAT_DATA_PATH="${STEAM_COMPAT_DATA_PATH:-$HOME/.lightroom_prefix}"
