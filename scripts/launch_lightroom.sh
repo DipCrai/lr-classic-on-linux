@@ -11,7 +11,12 @@ STEAM_COMPAT_CLIENT_INSTALL_PATH="${STEAM_COMPAT_CLIENT_INSTALL_PATH:-$HOME/.ste
 PROTON_DIR="${PROTON_DIR:-$STEAM_COMPAT_CLIENT_INSTALL_PATH/compatibilitytools.d/Proton-GE Latest}"
 LR_EXE="${LR_EXE:-$LR_DIR/Lightroom.exe}"
 DXVK_CONF="${DXVK_CONF:-$LR_DIR/dxvk.conf}"
-MONITOR="${MONITOR:-HDMI-A-1}"
+# Auto-detect monitor name, fallback to HDMI-A-1
+if [ -z "${MONITOR:-}" ]; then
+    MONITOR=$(hyprctl monitors -j 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['name'])" 2>/dev/null) \
+        || MONITOR=$(wlr-randr 2>/dev/null | grep -m1 '^[A-Z]' | awk '{print $1}') \
+        || MONITOR="HDMI-A-1"
+fi
 LOG_DIR="${LOG_DIR:-/tmp/proton_logs}"
 PATCH_SOURCE="${PATCH_SOURCE:-$LR_DIR/patches/fix_createwindow.c}"
 SCRIPTS_DIR="$(dirname "$0")"
