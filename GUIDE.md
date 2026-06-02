@@ -2,8 +2,6 @@
 
 ## Requirements
 
-- **Fedora 44+** (any distro with recent GNOME/Wayland)
-- **NVIDIA GPU** with driver 570+ (tested on 580.159.03, GTX 1080 Ti Pascal)
 - **GE-Proton10-34+** — [GE-Proton releases](https://github.com/GloriousEggroll/proton-ge-custom/releases)
 - **Lightroom Classic 13.x** (installed via official Adobe installer)
 - **mingw-w64-gcc** — for building `fix_createwindow.dll`:
@@ -11,6 +9,15 @@
   sudo dnf install mingw64-gcc        # Fedora
   sudo apt install mingw-w64          # Debian/Ubuntu
   ```
+
+## Tested On
+
+| Environment | Config |
+|-------------|--------|
+| Distro | Fedora 44, Arch Linux |
+| Desktop | GNOME (Wayland), Hyprland + Caelestia |
+| GPU | NVIDIA GTX 1080 Ti (Pascal) |
+| Driver | NVIDIA 580.159.03 (likely works on AMD too) |
 
 ## Quick Start
 
