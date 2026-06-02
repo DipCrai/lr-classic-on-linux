@@ -158,6 +158,8 @@ Features: Main window ✅, Develop ✅ (no flicker), Library histogram ✅, Deve
 | `PROTON_DIR` | `~/.steam/root/.../Proton-GE Latest` | Proton installation |
 | `LR_EXE` | `<repo_root>/Lightroom.exe` | Lightroom executable |
 | `MONITOR` | auto-detected via `wlr-randr` (fallback `HDMI-A-1`) | Wayland monitor name |
+| `GBM_BACKEND` | `nvidia-drm` | GPU backend (NVIDIA only; AMD/Intel: unset or leave empty) |
+| `__GLX_VENDOR_LIBRARY_NAME` | `nvidia` | GLX vendor (NVIDIA only; AMD/Intel: unset) |
 | `DXVK_CONF` | `<LR_DIR>/dxvk.conf` | DXVK config path |
 | `LOG_DIR` | `/tmp/proton_logs` | Log output directory |
 
