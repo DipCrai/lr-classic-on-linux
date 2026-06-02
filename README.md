@@ -66,8 +66,6 @@ Full setup: [GUIDE.md](GUIDE.md)
 - **GPU2 vs GPU3**: GPU2 = D3D11 compute, GPU3 = D3D12 compute. GPU3-only is best X11 config.
 - **Do NOT use d3d11 proxy**: HWND replacement breaks all rendering. Transparent pass-through only.
 
-See [AGENTS.md](AGENTS.md) for full session knowledge base.
-
 ## Known Issues
 
 - **Develop histogram**: DXVK + vkd3d-proton conflict on Pascal. No known fix — CPU fallback only.
