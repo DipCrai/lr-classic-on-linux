@@ -157,7 +157,7 @@ Features: Main window ✅, Develop ✅ (no flicker), Library histogram ✅, Deve
 | `WINEPREFIX` | `~/.lightroom_prefix/pfx` | Wine prefix |
 | `PROTON_DIR` | `~/.steam/root/.../Proton-GE Latest` | Proton installation |
 | `LR_EXE` | `<repo_root>/Lightroom.exe` | Lightroom executable |
-| `MONITOR` | auto-detected (`hyprctl` → `wlr-randr` → `HDMI-A-1`) | Wayland monitor name |
+| `MONITOR` | auto-detected via `wlr-randr` (fallback `HDMI-A-1`) | Wayland monitor name |
 | `DXVK_CONF` | `<LR_DIR>/dxvk.conf` | DXVK config path |
 | `LOG_DIR` | `/tmp/proton_logs` | Log output directory |
 
