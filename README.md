@@ -68,7 +68,6 @@ Full setup: [GUIDE.md](GUIDE.md)
 
 ## Known Issues
 
-- **Develop histogram**: DXVK + vkd3d-proton conflict on Pascal. No known fix — CPU fallback only.
 - **Wayland**: Import freezes, previews gray (even with GPU trick — only histogram is fixed).
 - **X11**: Develop flickers. `X_CopyArea` crash under XWayland (rare, restart fixes).
 - **GPU toggle manual step**: After each launch, go to Preferences → Performance and toggle GPU ON. Workaround in development.
