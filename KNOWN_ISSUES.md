@@ -1,23 +1,16 @@
 # Known Issues
 
-## 1. Develop Histogram — DXVK + vkd3d-proton Conflict (Pascal)
+## 1. Develop Histogram (X11)
 
-**Status**: ❌ Develop histogram blank on all configs except CPU fallback.
+**Status**: ✅ FIXED on X11 with GPU pref trick. ❌ Wayland: broken (no GPU compute on Wayland without TempDisable).
 
-**Root cause**: DXVK (Vulkan D3D11) and vkd3d-proton (Vulkan D3D12) corrupt each other when both active in the same process. Confirmed on NVIDIA GTX 1080 Ti (Pascal, driver 580.159.03) AND on software Vulkan (llvmpipe/LVP) — not a GPU driver bug, but a DXVK/vkd3d-proton in-process software conflict.
+**Root cause**: The Develop histogram blank was NOT a DXVK/vkd3d-proton conflict. The real root cause was CameraRaw's GPU probe failing at startup, corrupting GPU compute state. The TempDisable experiments were testing different states of a broken GPU initialization, not a conflict between backends.
 
-**Proof**:
-- GPU3-only (D3D12 off, D3D11 on) → works except Develop histogram ❌
-- GPU2-only (D3D11 compute off, D3D12 on) → Develop histogram ✅, everything else ❌
-- Both on → Develop preview ✅ only, everything else broken ❌
-- Both off (CPU) → everything works ✅ but slow
-- Wine built-in d3d12 (no vkd3d-proton) → full CPU fallback ✅
-- D3D12 no-op proxy (vtable hooks, real vkd3d-proton loaded) → corruption ❌
-- LVP software Vulkan for everything → SAME corruption ❌
+**Fix**: Same GPU pref trick as everything else — launch with `GPUManagerPref = "off"`, toggle ON in Preferences → CameraRaw initializes cleanly → both D3D11 and D3D12 compute work correctly → Develop histogram renders.
 
-**No known fix**. Upstream DXVK/vkd3d-proton investigation needed.
+**Previous (incorrect) analysis**: Extensive testing showed different TempDisable combinations giving different results, which was interpreted as DXVK/vkd3d-proton conflict. In reality, CameraRaw's GPU probe was failing nondeterministically depending on timing and pre-existing TempDisable state. The "GPU2-only → Develop histogram works" result was actually CameraRaw initializing in a degraded state that happened to leave D3D12 compute accessible.
 
-**Workaround**: The launcher scripts create TempDisableGPU2+3 in CameraRaw's GPU config directory, forcing CPU fallback for all compute (works, slower).
+**Wayland**: Develop histogram requires GPU compute, which requires the GPU pref trick. On Wayland, even with GPU ON in prefs, import and previews are still broken by the wl_surface role conflict, so the histogram context is moot.
 
 ## 2. CEF Import Dialog — Folder Select Freeze (Wayland)
 
@@ -78,7 +71,7 @@ XWayland GLAMOR bug (#1317) triggered by child window compositing. Restart resol
 
 | Issue | X11 | Wayland |
 |-------|-----|---------|
-| Develop histogram | ❌ (blank) | ❌ |
+| Develop histogram | ✅ (GPU pref trick) | ❌ |
 | Import dialog | ✅ | ❌ (freeze) |
 | Previews | ✅ | ❌ (gray) |
 | Library histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |

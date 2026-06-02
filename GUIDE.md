@@ -130,7 +130,7 @@ dxgi.syncInterval = 0
 ./scripts/launch_lightroom_x11.sh
 ```
 
-Features: Import ✅, Previews ✅, Library histogram ✅, Develop ⚠️ (flickers).
+Features: Import ✅, Previews ✅, Library histogram ✅, Develop histogram ✅, Develop ⚠️ (flickers only — no other issues on X11).
 
 **GPU Pref Trick enabled by default**: The launcher runs `gpu_pref_patcher.py off` before starting Lightroom. This sets `GPUManagerPref = "off"` in Lightroom preferences, causing CameraRaw to skip its broken startup GPU probe. After Lightroom is fully loaded, go to **Preferences → Performance** and enable GPU acceleration — CameraRaw re-initializes via a working code path.
 
@@ -178,9 +178,11 @@ WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/Lightroom/Preferences/
 
 Key preference changed: `GPUManagerPref = "off"` → skip CameraRaw GPU probe at startup.
 
-### 10. Develop Histogram: DXVK + vkd3d-proton conflict
+### 10. Develop Histogram
 
-The Develop histogram is a separate issue — it remains blank on Pascal GPUs due to an in-process conflict between DXVK and vkd3d-proton when both are active. No known fix. CPU fallback only.
+The Develop histogram was previously thought to be a DXVK/vkd3d-proton conflict on Pascal GPUs. This was incorrect — it was CameraRaw's failed GPU probe corrupting compute state. With the GPU pref trick (`GPUManagerPref = "off"` at launch, toggle ON after startup), CameraRaw initializes cleanly and the Develop histogram works on X11.
+
+**Wayland**: Develop histogram requires GPU compute, which requires the GPU pref trick. On Wayland, even with GPU ON, import and previews are still broken by the wl_surface role conflict.
 
 ## Troubleshooting
 
@@ -211,7 +213,9 @@ Switch to Wayland for Develop module work. This is a known NVIDIA driver bug.
 
 ### Develop histogram blank
 
-Known limitation: DXVK + vkd3d-proton conflict on Pascal. The launcher creates TempDisableGPU2+3 for CPU fallback. If you need GPU-accelerated histogram, use GPU3-only config (D3D11 GPU), but Develop histogram stays blank.
+On X11: Make sure you toggled GPU ON in Preferences → Performance after launching. The launcher starts Lightroom with GPU=OFF; you must enable it in the UI.
+
+On Wayland: Develop histogram is broken due to wl_surface role conflict (no GPU compute on Wayland via DXVK).
 
 ## Files
 

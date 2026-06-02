@@ -9,13 +9,13 @@ Fixes and analysis for running **Adobe Lightroom Classic** on Linux via **Wine/P
 | Main window | ✅ | ✅ (patch required) |
 | Import dialog | ✅ | ❌ (freezes on folder select) |
 | Image previews | ✅ | ❌ (gray) |
-| Library histogram | ✅ (D3D11 GPU via GPU pref trick) | ✅ (GPU pref trick) |
+| Library histogram | ✅ (GPU pref trick) | ✅ (GPU pref trick) |
+| Develop histogram | ✅ (GPU pref trick) | ❌ |
 | Develop module | ⚠️ (live preview flickers) | ✅ |
-| Develop histogram | ❌ (DXVK/vkd3d-proton conflict) | ❌ |
 
-**GPU Pref Trick**: Launch with `GPUManagerPref = "off"` in Lightroom preferences — CameraRaw skips its broken startup GPU probe. Enable GPU in Lightroom settings → CameraRaw re-initializes via working code path. Import, previews, and library histogram all work on X11 with this trick.
+**GPU Pref Trick**: Launch with `GPUManagerPref = "off"` in Lightroom preferences — CameraRaw skips its broken startup GPU probe. Enable GPU in Lightroom settings → CameraRaw re-initializes via working code path. Everything works on X11 with this trick (import, previews, all histograms). Only Develop module flickering on X11 remains.
 
-**Root cause confirmed**: DXVK + vkd3d-proton corrupt each other when both active in the same process. Confirmed on both NVIDIA (580.159.03) AND software Vulkan (llvmpipe/LVP) — in-process software conflict, not a driver bug.
+**Critical finding**: The DXVK/vkd3d-proton conflict theory was incorrect. The real root cause of ALL broken features on X11 was CameraRaw's GPU probe failing at startup, corrupting GPU compute state. When CameraRaw initializes cleanly (via the GPU toggle re-init path), both D3D11 and D3D12 compute backends work correctly.
 
 ## Quick Start
 
