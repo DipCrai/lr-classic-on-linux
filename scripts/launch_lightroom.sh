@@ -64,6 +64,10 @@ echo "=== Fix 3: GPU pref patching (CameraRaw startup probe workaround) ==="
 python3 "$SCRIPTS_DIR/gpu_pref_patcher.py" off
 echo "  ✓ GPU set to OFF in preferences (toggle ON in Lightroom for acceleration)"
 
+# TempDisableGPU3 — prevents D3D12/vkd3d-proton compute conflict (Pascal)
+CAMERA_RAW="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw"
+touch "$CAMERA_RAW/TempDisableGPU3" 2>/dev/null && echo "  ✓ GPU3 (D3D12) disabled via TempDisableGPU3"
+
 # ========== ENVIRONMENT ==========
 export PROTON_ENABLE_WAYLAND=1
 export PROTON_WAYLAND_MONITOR="$MONITOR"
@@ -105,4 +109,5 @@ echo "=== Cleanup ==="
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /f 2>/dev/null
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /f 2>/dev/null
 echo "  ✓ AppInit registry cleaned"
+rm -f "$CAMERA_RAW/TempDisableGPU3" 2>/dev/null && echo "  ✓ GPU3 re-enabled"
 echo "=== Done ==="
