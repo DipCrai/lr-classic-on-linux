@@ -4,12 +4,7 @@ Fixes and analysis for running **Adobe Lightroom Classic** on Linux via **Wine/P
 
 <img width="2560" height="1440" alt="image" src="https://github.com/user-attachments/assets/12246dbb-b48b-409d-8172-96821f098314" />
 
-
-https://github.com/user-attachments/assets/d7808d66-da54-4600-91be-1f6e9f96fec9
-
-
-
-
+https://github.com/user-attachments/assets/90a9eca5-f06a-474a-b35b-3172ba565e66
 
 ## Status
 
