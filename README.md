@@ -79,6 +79,9 @@ Full setup: [GUIDE.md](GUIDE.md)
 - **X11**: Develop flickers. `X_CopyArea` crash under XWayland (rare, restart fixes).
 - **GPU toggle manual step**: After each launch, go to Preferences → Performance and toggle GPU ON.
 
+## Currently working on
+Currently working on patch for ai features such as ai masking
+
 ## AI Disclosure
 
 Developed with assistance from opencode AI coding agent. Analysis, patches, and docs produced through iterative human-AI collaboration.
