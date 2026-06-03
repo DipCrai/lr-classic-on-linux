@@ -2,9 +2,12 @@
 
 Fixes and analysis for running **Adobe Lightroom Classic** on Linux via **Wine/Proton**.
 
-<img width="2560" height="1440" alt="image" src="https://github.com/user-attachments/assets/12246dbb-b48b-409d-8172-96821f098314" />
-
-https://github.com/user-attachments/assets/90a9eca5-f06a-474a-b35b-3172ba565e66
+<table>
+  <tr>
+    <td width="50%"><img src="https://github.com/user-attachments/assets/12246dbb-b48b-409d-8172-96821f098314" width="100%"></td>
+    <td width="50%"><video src="https://github.com/user-attachments/assets/90a9eca5-f06a-474a-b35b-3172ba565e66" width="100%" controls></video></td>
+  </tr>
+</table>
 
 ## Status
 
