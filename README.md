@@ -2,6 +2,9 @@
 
 Fixes and analysis for running **Adobe Lightroom Classic** on Linux via **Wine/Proton**.
 
+<img width="2560" height="1440" alt="image" src="https://github.com/user-attachments/assets/12246dbb-b48b-409d-8172-96821f098314" />
+
+
 ## Status
 
 | Feature | X11 (recommended) | Wayland |
