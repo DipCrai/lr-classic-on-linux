@@ -64,9 +64,35 @@ echo "=== Fix 3: GPU pref patching (CameraRaw startup probe workaround) ==="
 python3 "$SCRIPTS_DIR/gpu_pref_patcher.py" off
 echo "  ✓ GPU set to OFF in preferences (toggle ON in Lightroom for acceleration)"
 
-# TempDisableGPU3 — prevents D3D12/vkd3d-proton compute conflict (Pascal)
-CAMERA_RAW="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw"
-touch "$CAMERA_RAW/TempDisableGPU3" 2>/dev/null && echo "  ✓ GPU3 (D3D12) disabled via TempDisableGPU3"
+# ========== FIX 4: CameraRaw GPU Config Lock ==========
+echo "=== Fix 4: CameraRaw GPU config lock ==="
+CAMERA_RAW_GPU_DIR="$WINEPREFIX/drive_c/users/steamuser/AppData/Roaming/Adobe/CameraRaw/GPU/Adobe Photoshop Lightroom Classic"
+CAMERA_RAW_GPU_CFG="$CAMERA_RAW_GPU_DIR/Camera Raw GPU Config.txt"
+mkdir -p "$CAMERA_RAW_GPU_DIR"
+
+if [ -f "$CAMERA_RAW_GPU_CFG" ] && grep -q 'crs:gpu_compute_quick_self_test_passed="True"' "$CAMERA_RAW_GPU_CFG" 2>/dev/null; then
+    echo "  ✓ CameraRaw GPU config valid, locking read-only"
+else
+    echo "  ! Creating golden CameraRaw GPU config (probe workaround)"
+    cat > "$CAMERA_RAW_GPU_CFG" << 'GOLDEN_EOF'
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 7.0-c000 1.000000, 0000/00/00-00:00:00        ">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/"
+   crs:gpu_preferred_system=""
+   crs:gpu_init_digest="742E562419B091D522C9DB42B370F46A"
+   crs:gpu_compute_digest="3A58040472A0AB0D95057E860EDADD8D"
+   crs:gpu_compute_quick_self_test_passed="True"
+   crs:gpu_hdr_display_scale="1"
+   crs:gpu_noise_fudge="0"
+   crs:gpu_trimap_dilate_radius="0.01"
+   crs:gpu_trimap_erode_radius="0.01"/>
+ </rdf:RDF>
+</x:xmpmeta>
+GOLDEN_EOF
+fi
+chmod 444 "$CAMERA_RAW_GPU_CFG"
+echo "  ✓ CameraRaw GPU config locked (read-only)"
 
 # ========== ENVIRONMENT ==========
 export PROTON_ENABLE_WAYLAND=1
@@ -109,5 +135,7 @@ echo "=== Cleanup ==="
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "AppInit_DLLs" /f 2>/dev/null
 "$PROTON_DIR/files/bin/wine64" reg delete "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v "LoadAppInit_DLLs" /f 2>/dev/null
 echo "  ✓ AppInit registry cleaned"
-rm -f "$CAMERA_RAW/TempDisableGPU3" 2>/dev/null && echo "  ✓ GPU3 re-enabled"
+# Restore CameraRaw GPU config writability
+chmod 644 "$CAMERA_RAW_GPU_CFG" 2>/dev/null
+echo "  ✓ CameraRaw GPU config restored"
 echo "=== Done ==="
