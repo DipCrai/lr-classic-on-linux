@@ -239,4 +239,3 @@ On both Wayland and X11: Make sure you toggled GPU ON in Preferences → Perform
 | `patches/wine/0002-*.patch` | Wine winewayland subsurface reorder |
 | `dxvk.conf` | DXVK configuration |
 | `docs/ROOT_CAUSE.md` | Root cause analysis |
-| `AGENTS.md` | AI session knowledge base |
